@@ -14,8 +14,8 @@ More tools coming soon!
 ## 📜 License
 
 This repository is licensed under the [Apache License 2.0](LICENSE).  
-Please attribute **[Your Name]** when using or modifying these tools.
+Please attribute **Nora Gibson** when using or modifying these tools.
 
 ## 💡 Creator
 
-This project was initiated by [Your Name], with the vision of sharing accessible, inspiring resources for artists, choreographers, and creative thinkers.
+This project was initiated by Nora Gibson, with the vision of sharing accessible, inspiring resources for artists, choreographers, and creative thinkers.

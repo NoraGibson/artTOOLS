@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choreography Tool</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin-top: 20px; background-color: #f0f0f0; }
+        canvas { border: 1px solid #333; background-color: #fff; margin-bottom: 20px; }
+        button {
+            padding: 8px 15px; font-size: 14px; cursor: pointer; background-color: #3498DB;
+            color: white; border: none; border-radius: 5px; margin: 5px;
+        }
+        button:hover { background-color: #2980b9; }
+        .controls { margin-bottom: 10px; display: flex; align-items: center; gap: 15px;}
+        .controls label { margin-right: 5px; }
+        #savedPosesInfo { margin-top: 10px; font-size: 0.9em; color: #555; }
+        h1 { color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Choreography Tool</h1>
+    <canvas id="skeletonCanvas" width="700" height="750"></canvas>
+    <div class="controls">
+        <button id="moveButton">Move Figure</button>
+        <div>
+            <label for="moveChance">Joint Move Intensity:</label>
+            <input type="range" id="moveChance" min="0" max="30" value="15">
+            <span id="moveChanceValue">50%</span>
+        </div>
+    </div>
+    <div class="controls">
+        <button id="savePoseButton">Save Pose</button>
+        <button id="playSequenceButton">Play Sequence</button>
+        <button id="clearPosesButton">Clear Saved Poses</button>
+    </div>
+    <div id="savedPosesInfo">Saved Poses: 0</div>
+
+    <script>
+        const canvas = document.getElementById('skeletonCanvas');
+        const ctx = canvas.getContext('2d');
+        const moveButton = document.getElementById('moveButton');
+        const savePoseButton = document.getElementById('savePoseButton');
+        const playSequenceButton = document.getElementById('playSequenceButton');
+        const clearPosesButton = document.getElementById('clearPosesButton');
+        const moveChanceSlider = document.getElementById('moveChance');
+        const moveChanceValueDisplay = document.getElementById('moveChanceValue');
+        const savedPosesInfo = document.getElementById('savedPosesInfo');
+
+        const BONE_COLOR = '#333';
+        const JOINT_COLOR = '#3498DB';
+        const BODY_FILL_COLOR = '#D6EAF8'; // Pale blue
+        const DEFAULT_JOINT_RADIUS = 4;
+        const DEFAULT_LIMB_WIDTH = 5;
+        const HAND_FOOT_JOINT_RADIUS = 2.5;
+        const HAND_FOOT_LIMB_WIDTH = 3;
+
+        const FLOOR_Y = canvas.height - 80;
+        const PLAYBACK_SPEED = 1400;
+
+        function toRadians(degrees) { return degrees * Math.PI / 180; }
+
+        function createFinger(namePrefix, segmentsMeta, isThumb = false) { 
+            let finger = {}; let currentSegment = finger; const numSegments = isThumb ? 2 : 3;
+            for (let i = 1; i <= numSegments; i++) {
+                const segMeta = segmentsMeta[i-1];
+                currentSegment[`${namePrefix}${i}`] = { name: `${namePrefix}${i}`, angle: segMeta.neutralAngle, length: segMeta.length, minAngle: segMeta.minAngle, maxAngle: segMeta.maxAngle, neutralAngle: segMeta.neutralAngle, children: {} };
+                if (i < numSegments) currentSegment = currentSegment[`${namePrefix}${i}`].children;
+            } return finger[`${namePrefix}1`];
+        }
+        const fingerSegmentsMeta = {
+            thumb: [ { length: 10, minAngle: -30, maxAngle: 70, neutralAngle: 30 }, { length: 12, minAngle: -10, maxAngle: 80, neutralAngle: 10 } ],
+            index: [ { length: 12, minAngle: -20, maxAngle: 90, neutralAngle: 5 }, { length: 10, minAngle: -10, maxAngle: 100, neutralAngle: 5 }, { length: 8,  minAngle: -10, maxAngle: 80, neutralAngle: 5 } ],
+            middle: [ { length: 13, minAngle: -20, maxAngle: 90, neutralAngle: 0 }, { length: 11, minAngle: -10, maxAngle: 100, neutralAngle: 0 }, { length: 9,  minAngle: -10, maxAngle: 80, neutralAngle: 0 } ],
+            ring: [ { length: 12, minAngle: -20, maxAngle: 90, neutralAngle: -5 }, { length: 10, minAngle: -10, maxAngle: 100, neutralAngle: -5 }, { length: 8,  minAngle: -10, maxAngle: 80, neutralAngle: -5 } ],
+            pinky: [ { length: 10, minAngle: -20, maxAngle: 90, neutralAngle: -10 }, { length: 8, minAngle: -10, maxAngle: 100, neutralAngle: -10 }, { length: 7, minAngle: -10, maxAngle: 80, neutralAngle: -10 } ]
+        };
+
+        let skeleton = {
+            hips: { 
+                name: "hips",
+                x: canvas.width / 2, 
+                y: FLOOR_Y - (60 + 60 + 10), // Base of torso at hip level
+                angle: 0, 
+                hipWidth: 35, // Base width of the torso polygon
+                neutralAngle: 0,
+                children: {
+                    torso: {
+                        name: "torso", 
+                        angle: -90,     // Torso angle relative to hips (-90 for upright)
+                        length: 90,     // <<<< INCREASED TORSO LENGTH (height of the polygon)
+                        shoulderWidth: 50,  // Width of the top of the torso polygon
+                        minAngle: -110, maxAngle: -70, neutralAngle: -90,
+                        children: {
+                            neck: { name: "neck", angle: 0, length: 15, minAngle: -45, maxAngle: 45, neutralAngle: 0, children: {
+                                head: { name: "head", angle: 0, headWidth: 28, headHeight: 35, minAngle: -60, maxAngle: 60, neutralAngle: 0, children: {} }
+                            }},
+                            leftShoulder: { 
+                                name: "leftShoulder", angle: 170, length: 0, 
+                                minAngle: -20, maxAngle: 190, neutralAngle: 170, 
+                                children: { 
+                                    leftUpperArm: { name: "leftUpperArm", angle: 0, length: 45, minAngle: -90, maxAngle: 170, neutralAngle: 5, children: { 
+                                        leftForearm: { name: "leftForearm", angle: 0, length: 40, minAngle: -150, maxAngle: 10, neutralAngle: 10, children: { 
+                                            leftWrist: { name: "leftWrist", angle: 0, length: 8, minAngle: -80, maxAngle: 80, neutralAngle: 0, children: { 
+                                                leftThumb: createFinger("leftThumb", fingerSegmentsMeta.thumb, true), leftIndex: createFinger("leftIndex", fingerSegmentsMeta.index), 
+                                                leftMiddle: createFinger("leftMiddle", fingerSegmentsMeta.middle), leftRing: createFinger("leftRing", fingerSegmentsMeta.ring), 
+                                                leftPinky: createFinger("leftPinky", fingerSegmentsMeta.pinky),
+                                            }}
+                                        }}
+                                    }}
+                                }
+                            },
+                            rightShoulder: { 
+                                name: "rightShoulder", angle: -170, length: 0, 
+                                minAngle: -190, maxAngle: 20, neutralAngle: -170,
+                                children: { 
+                                     rightUpperArm: { name: "rightUpperArm", angle: 0, length: 45, minAngle: -170, maxAngle: 90, neutralAngle: -5, children: { 
+                                        rightForearm: { name: "rightForearm", angle: 0, length: 40, minAngle: -10, maxAngle: 150, neutralAngle: -10, children: { 
+                                            rightWrist: { name: "rightWrist", angle: 0, length: 8, minAngle: -80, maxAngle: 80, neutralAngle: 0, children: { 
+                                                rightThumb: createFinger("rightThumb", fingerSegmentsMeta.thumb, true), rightIndex: createFinger("rightIndex", fingerSegmentsMeta.index), 
+                                                rightMiddle: createFinger("rightMiddle", fingerSegmentsMeta.middle), rightRing: createFinger("rightRing", fingerSegmentsMeta.ring), 
+                                                rightPinky: createFinger("rightPinky", fingerSegmentsMeta.pinky),
+                                            }}
+                                        }}
+                                    }}
+                                }
+                            }
+                        }
+                    },
+                    leftUpperLeg: { 
+                        name: "leftUpperLeg", angle: -95, length: 60, 
+                        minAngle: -170, maxAngle: 45, neutralAngle: -95, 
+                        children: { 
+                            leftLowerLeg: { name: "leftLowerLeg", angle: 5, length: 60, minAngle: 0, maxAngle: 150, neutralAngle: 5, children: { 
+                                leftAnkle: { name: "leftAnkle", angle: 0, length: 10, minAngle: -60, maxAngle: 40, neutralAngle: 0, children: { 
+                                    leftMidFoot: { name: "leftMidFoot", angle: 90, length: 30, minAngle: 70, maxAngle: 110, neutralAngle: 90, children: {} }
+                                }}
+                            }}
+                        }
+                    },
+                    rightUpperLeg: { 
+                        name: "rightUpperLeg", angle: 95, length: 60, 
+                        minAngle: -45, maxAngle: 170, neutralAngle: 95,
+                        children: { 
+                             rightLowerLeg: { name: "rightLowerLeg", angle: -5, length: 60, minAngle: -150, maxAngle: 0, neutralAngle: -5, children: { 
+                                rightAnkle: { name: "rightAnkle", angle: 0, length: 10, minAngle: -60, maxAngle: 40, neutralAngle: 0, children: { 
+                                    rightMidFoot: { name: "rightMidFoot", angle: 90, length: 30, minAngle: 70, maxAngle: 110, neutralAngle: 90, children: {} }
+                                }}
+                            }}
+                        }
+                    }
+                }
+            }
+        };
+
+        function drawFloor() { 
+            ctx.beginPath(); ctx.moveTo(0, FLOOR_Y); ctx.lineTo(canvas.width, FLOOR_Y);
+            ctx.strokeStyle = '#888'; ctx.lineWidth = 2; ctx.stroke();
+        }
+
+        function drawJoint(jointData, parentX, parentY, parentAngleCumulative) {
+            ctx.save();
+            ctx.translate(parentX, parentY);
+            ctx.rotate(toRadians(parentAngleCumulative + jointData.angle));
+
+            const isHandFootPart = jointData.name && (jointData.name.includes("Thumb") || jointData.name.includes("Index") || jointData.name.includes("Middle") || jointData.name.includes("Ring") || jointData.name.includes("Pinky") || jointData.name.includes("Wrist") || jointData.name.includes("Ankle") || jointData.name.includes("MidFoot"));
+            const currentLimbWidth = isHandFootPart ? HAND_FOOT_LIMB_WIDTH : DEFAULT_LIMB_WIDTH;
+            const currentJointRadius = isHandFootPart ? HAND_FOOT_JOINT_RADIUS : DEFAULT_JOINT_RADIUS;
+
+            if (jointData.name === "head") {
+                const headCenterX = jointData.headWidth / 3;
+                ctx.beginPath();
+                ctx.ellipse(headCenterX, 0, jointData.headWidth / 2, jointData.headHeight / 2, 0, 0, 2 * Math.PI);
+                ctx.fillStyle = BODY_FILL_COLOR; ctx.fill();
+                ctx.strokeStyle = BONE_COLOR; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(headCenterX + jointData.headWidth / 2 - 2, 0); ctx.lineTo(headCenterX + jointData.headWidth / 2 + 5, 0); ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, 0, DEFAULT_JOINT_RADIUS, 0, 2 * Math.PI); ctx.fillStyle = JOINT_COLOR; ctx.fill();
+
+            } else if (jointData.name === "torso") {
+                // (0,0) after transform is the hip joint, where the base of the torso polygon sits.
+                // The polygon extends 'length' units along the torso's current rotated axis.
+                const baseWidth = skeleton.hips.hipWidth; // Get base width from parent hips object
+                const topWidth = jointData.shoulderWidth; // Get top width from torso object itself
+                
+                ctx.beginPath();
+                ctx.moveTo(-baseWidth / 2, 0); // Bottom-left point of torso at hip origin
+                ctx.lineTo(jointData.length, -topWidth / 2); // Top-left point (at end of torso length)
+                ctx.lineTo(jointData.length, topWidth / 2);  // Top-right point
+                ctx.lineTo(baseWidth / 2, 0);  // Bottom-right point of torso at hip origin
+                ctx.closePath();
+                ctx.fillStyle = BODY_FILL_COLOR; ctx.fill();
+                ctx.strokeStyle = BONE_COLOR; ctx.lineWidth = 1.5; ctx.stroke();
+
+                // After drawing the torso shape, the drawing origin for its children (neck, shoulders)
+                // should be at the center of its top edge.
+                // The torso's (0,0) is its base. Its top edge is 'length' units away.
+                ctx.translate(jointData.length, 0); // Move origin to the center of the top edge of torso
+                
+                // Draw a joint at this new origin (neck base/shoulder center)
+                ctx.beginPath(); ctx.arc(0, 0, DEFAULT_JOINT_RADIUS, 0, 2 * Math.PI); 
+                ctx.fillStyle = JOINT_COLOR; ctx.fill();
+            
+            } else { // Standard limb or joint-only segment (like shoulders)
+                if (jointData.length > 0) { 
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(jointData.length, 0);
+                    ctx.strokeStyle = BONE_COLOR; ctx.lineWidth = currentLimbWidth; ctx.stroke();
+                }
+                // Translate to the end of this bone (or stay at 0,0 if length is 0, like for shoulders)
+                ctx.translate(jointData.length || 0, 0); 
+                // Draw the joint circle at this new origin
+                ctx.beginPath(); ctx.arc(0, 0, currentJointRadius, 0, 2 * Math.PI); 
+                ctx.fillStyle = JOINT_COLOR; ctx.fill();
+            }
+            
+            // Draw children
+            for (const childKey in jointData.children) {
+                const childJointData = jointData.children[childKey];
+                let childOriginX = 0; 
+                let childOriginY = 0; 
+                let childParentAngleOffset = 0; // Children's angles are relative to parent's NEW X-axis
+
+                if (jointData.name === "torso") {
+                    // Current transform origin is at the NECK BASE (center of the top edge of torso polygon)
+                    // because of the `ctx.translate(jointData.length, 0);` done when drawing torso.
+                    if (childKey === "leftShoulder") {
+                        childOriginX = 0; // Neck base is (0,0)
+                        childOriginY = -jointData.shoulderWidth / 2; // Move left from neck base
+                    } else if (childKey === "rightShoulder") {
+                        childOriginX = 0; // Neck base is (0,0)
+                        childOriginY = jointData.shoulderWidth / 2;  // Move right from neck base
+                    }
+                    // For 'neck', childOriginX and childOriginY remain 0,0 (it starts at neck base)
+                    drawJoint(childJointData, childOriginX, childOriginY, childParentAngleOffset);
+                } else {
+                    // Default: child originates from the end of the current joint (now at local 0,0)
+                    drawJoint(childJointData, 0, 0, 0);
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawSkeleton() { 
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawFloor(); 
+            const hips = skeleton.hips;
+            
+            // Draw the main hip joint (the root point of the body)
+            ctx.beginPath(); 
+            ctx.arc(hips.x, hips.y, DEFAULT_JOINT_RADIUS + 1, 0, 2 * Math.PI); 
+            ctx.fillStyle = JOINT_COLOR; 
+            ctx.fill();
+
+            // Draw children of hips (torso, legs)
+            // Their parent's origin for drawing is (hips.x, hips.y)
+            // Their parent's cumulative angle for drawing is hips.angle
+            for (const childKey in hips.children) { 
+                drawJoint(hips.children[childKey], hips.x, hips.y, hips.angle); 
+            }
+        }
+
+        let savedPoses = []; /* ... rest of the script is identical to the one you provided ... */
+        let currentPlaybackPoseIndex = 0; let isPlayingSequence = false;
+        function cloneAngles(sourceNode) {  let targetNode = { angle: sourceNode.angle }; if (sourceNode.x !== undefined) targetNode.x = sourceNode.x; if (sourceNode.y !== undefined) targetNode.y = sourceNode.y; if (sourceNode.children) { targetNode.children = {}; for (const key in sourceNode.children) { targetNode.children[key] = cloneAngles(sourceNode.children[key]); } } return targetNode; }
+        function applyPoseToSkeleton(targetSkeletonNode, savedPoseNode) { if (savedPoseNode.angle !== undefined) targetSkeletonNode.angle = savedPoseNode.angle; if (savedPoseNode.x !== undefined) targetSkeletonNode.x = savedPoseNode.x; if (savedPoseNode.y !== undefined) targetSkeletonNode.y = savedPoseNode.y; if (savedPoseNode.children) { for (const key in savedPoseNode.children) { if (targetSkeletonNode.children && targetSkeletonNode.children[key]) { applyPoseToSkeleton(targetSkeletonNode.children[key], savedPoseNode.children[key]); }}}}
+        savePoseButton.addEventListener('click', () => { const poseToSave = cloneAngles(skeleton.hips); savedPoses.push(poseToSave); savedPosesInfo.textContent = `Saved Poses: ${savedPoses.length}`; });
+        clearPosesButton.addEventListener('click', () => { savedPoses = []; currentPlaybackPoseIndex = 0; isPlayingSequence = false; savedPosesInfo.textContent = `Saved Poses: 0`; playSequenceButton.textContent = "Play Sequence"; });
+        function playNextPose() { if (!isPlayingSequence || savedPoses.length === 0) { isPlayingSequence = false; playSequenceButton.textContent = "Play Sequence"; return; } applyPoseToSkeleton(skeleton.hips, savedPoses[currentPlaybackPoseIndex]); drawSkeleton(); currentPlaybackPoseIndex = (currentPlaybackPoseIndex + 1) % savedPoses.length; setTimeout(playNextPose, PLAYBACK_SPEED); }
+        playSequenceButton.addEventListener('click', () => { if (savedPoses.length === 0) { alert("No poses saved to play."); return; } isPlayingSequence = !isPlayingSequence; if (isPlayingSequence) { playSequenceButton.textContent = "Stop Sequence"; currentPlaybackPoseIndex = 0; playNextPose(); } else { playSequenceButton.textContent = "Play Sequence"; } });
+        
+        function getJointGlobalPosition(jointPath) { 
+            let currentX = skeleton.hips.x; 
+            let currentY = skeleton.hips.y;
+            let cumulativeAngle = skeleton.hips.angle; 
+            let currentNode = skeleton.hips;
+
+            for (let i = 1; i < jointPath.length; i++) { 
+                const segmentName = jointPath[i];
+                let offsetX = 0; let offsetY = 0;
+
+                if (currentNode.name === "torso" && currentNode.children[segmentName]) {
+                    const torsoHeight = currentNode.length; // This is the actual height of the torso
+                    const torsoTopWidth = currentNode.shoulderWidth; 
+                    
+                    // Calculate attachment point relative to torso's origin (hip point), then rotate.
+                    // Neck attaches at (torsoHeight, 0) along torso's axis before rotation of neck itself.
+                    // Shoulders attach at (torsoHeight, +/- shoulderWidth/2) along torso's axis.
+                    // These offsets are from the hip point to the *neck base* (top-center of torso)
+                    // and then further to the shoulder points from that neck base.
+
+                    let attachPointX = 0; // X along the torso's length axis
+                    let attachPointY = 0; // Y perpendicular to torso's length axis
+
+                    if (segmentName === "neck") {
+                        attachPointX = torsoHeight; // Neck is at the end of torso's length
+                    } else if (segmentName === "leftShoulder") {
+                        attachPointX = torsoHeight; // Shoulder is also at end of torso's length
+                        attachPointY = -torsoTopWidth / 2; // Offset to the left
+                    } else if (segmentName === "rightShoulder") {
+                        attachPointX = torsoHeight;
+                        attachPointY = torsoTopWidth / 2; // Offset to the right
+                    }
+                    
+                    // Add these attachPointX/Y (which are in torso's local frame) to currentX/Y,
+                    // after rotating them by the torso's cumulative angle.
+                    currentX += attachPointX * Math.cos(toRadians(cumulativeAngle)) - attachPointY * Math.sin(toRadians(cumulativeAngle));
+                    currentY += attachPointX * Math.sin(toRadians(cumulativeAngle)) + attachPointY * Math.cos(toRadians(cumulativeAngle));
+                }
+                
+                if (!currentNode.children || !currentNode.children[segmentName]) { console.error("Invalid joint path:", jointPath, "at", segmentName, "from parent", currentNode.name); return null; }
+                currentNode = currentNode.children[segmentName]; 
+                cumulativeAngle += currentNode.angle; // Add the new segment's own relative angle
+                
+                const length = currentNode.length || 0;
+                if (length > 0 && !(currentNode.name === "torso" && (segmentName === "neck" || segmentName.includes("Shoulder")))) { 
+                   // If we already handled offset for neck/shoulder from torso, don't add torso's length again.
+                   // Only add length of actual limbs.
+                    currentX += length * Math.cos(toRadians(cumulativeAngle)); 
+                    currentY += length * Math.sin(toRadians(cumulativeAngle)); 
+                } else if (length > 0 && currentNode.name !== "torso") { // For any other limb
+                    currentX += length * Math.cos(toRadians(cumulativeAngle)); 
+                    currentY += length * Math.sin(toRadians(cumulativeAngle)); 
+                }
+            } return { x: currentX, y: currentY };
+        }
+
+        function randomizeJointAngle(jointData) { const actualChancePercentage = parseInt(moveChanceSlider.value); const probabilityToMove = actualChancePercentage / 100.0; if (jointData.minAngle !== undefined && jointData.maxAngle !== undefined) { if (Math.random() < probabilityToMove) {  jointData.angle = Math.random() * (jointData.maxAngle - jointData.minAngle) + jointData.minAngle; } } for (const childKey in jointData.children) randomizeJointAngle(jointData.children[childKey]); }
+        function randomizeLegPose(legRoot) { function RJA_Leg(jointData) { if (jointData.minAngle !== undefined && jointData.maxAngle !== undefined) { jointData.angle = Math.random() * (jointData.maxAngle - jointData.minAngle) + jointData.minAngle; } for (const childKey in jointData.children) { RJA_Leg(jointData.children[childKey]); } } RJA_Leg(legRoot); }
+
+        function randomizePose() { 
+            for (const childKey in skeleton.hips.children) randomizeJointAngle(skeleton.hips.children[childKey]);
+            let attempts = 0; const maxAttempts = 10; 
+            while (attempts < maxAttempts) {
+                const leftFootPath = ['hips', 'leftUpperLeg', 'leftLowerLeg', 'leftAnkle', 'leftMidFoot'];
+                const rightFootPath = ['hips', 'rightUpperLeg', 'rightLowerLeg', 'rightAnkle', 'rightMidFoot'];
+                const leftFootTipPos = getJointGlobalPosition(leftFootPath); 
+                const rightFootTipPos = getJointGlobalPosition(rightFootPath);
+                if (!leftFootTipPos || !rightFootTipPos) { console.error("Foot position not found, breaking gravity check."); break; }
+                const leftFootGrounded = leftFootTipPos.y >= FLOOR_Y - HAND_FOOT_JOINT_RADIUS; 
+                const rightFootGrounded = rightFootTipPos.y >= FLOOR_Y - HAND_FOOT_JOINT_RADIUS;
+                if (leftFootGrounded || rightFootGrounded) break;
+                if (Math.random() < 0.5) randomizeLegPose(skeleton.hips.children.leftUpperLeg); else randomizeLegPose(skeleton.hips.children.rightUpperLeg);
+                attempts++;
+            }
+        }
+
+        moveButton.addEventListener('click', () => { if(isPlayingSequence) { isPlayingSequence = false; playSequenceButton.textContent = "Play Sequence"; } randomizePose(); drawSkeleton(); });
+        function updateMoveChanceDisplay() { const sliderValue = parseInt(moveChanceSlider.value); const displayPercentage = Math.round((sliderValue / 30) * 100); moveChanceValueDisplay.textContent = `${displayPercentage}%`; }
+        moveChanceSlider.addEventListener('input', updateMoveChanceDisplay);
+
+        function setNeutralPoseRecursive(jointData) { 
+            if (jointData.neutralAngle !== undefined) {
+                jointData.angle = jointData.neutralAngle;
+            } else if (jointData.minAngle !== undefined && jointData.maxAngle !== undefined) { 
+                let initialAngle = jointData.minAngle + (jointData.maxAngle - jointData.minAngle) * 0.5; 
+                if (jointData.minAngle <= 0 && jointData.maxAngle >= 0 && 
+                    !(jointData.name && (jointData.name.includes("UpperLeg") || jointData.name.includes("LowerLeg") || jointData.name.includes("Shoulder")) ) ) { // Keep leg/shoulder neutral angles
+                     initialAngle = 0; 
+                }
+                jointData.angle = initialAngle; 
+            } 
+            for (const childKey in jointData.children) {
+                setNeutralPoseRecursive(jointData.children[childKey]);
+            }
+        }
+        function setInitialPose() { 
+            const upperLeg = skeleton.hips.children.leftUpperLeg;
+            const lowerLeg = upperLeg.children.leftLowerLeg;
+            skeleton.hips.y = FLOOR_Y - (upperLeg.length + lowerLeg.length + HAND_FOOT_JOINT_RADIUS + 5); 
+            
+            setNeutralPoseRecursive(skeleton.hips); 
+            drawSkeleton(); 
+        }
+        
+        updateMoveChanceDisplay(); 
+        setInitialPose();
+    </script>
+</body>
+</html>

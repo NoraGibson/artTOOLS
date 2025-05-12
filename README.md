@@ -7,6 +7,7 @@ artTOOLS is a collection of tools to inspire creativity.
 ## ✨ Current Tools
 
   **Choreography Tool**  
+  
 A generative tool designed to spark movement ideas and inspire new choreography. Save your poses within the app and play them back to build and memorize phrases. Accessible via mobile or desktop.
 
   **Ballet Modifier**

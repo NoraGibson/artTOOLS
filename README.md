@@ -9,11 +9,13 @@ artTOOLS is a collection of tools to inspire creativity.
   **Choreography Tool**  
   
 A generative tool designed to spark movement ideas and inspire new choreography. Save your poses within the app and play them back to build and memorize phrases. Accessible via mobile or desktop.
+
 TRY ME! Copy and paste into any browser: https://NoraGibson.github.io/artTOOLS/choreography_tool1.html
 
   **Ballet Modifier**
   
 This tool combines traditional ballet terminology with modifying dynamic action words to contemporize ballet and allow for creative collaboration between dancer and automation. Create a sequence of movements, and even download the list to share with other dancers. See how the instructions may be creatively interpreted by differnt minds and bodies!  Accessible via mobile or desktop.
+
 TRY ME! Copy and paste into any browser: https://NoraGibson.github.io/artTOOLS/ballet_modifier1.html
 
 More tools coming soon!

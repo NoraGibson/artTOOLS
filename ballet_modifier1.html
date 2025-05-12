@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Ensures proper rendering and touch zooming on mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Updated title (no comment) -->
+    <title>Contemporary Ballet Choreography Tool</title>
+    <style>
+        /* Basic Reset & Font */
+        body, html {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: sans-serif;
+            background-color: #FFF8DC; /* Cornsilk (Cream) */
+            color: #000; /* Black */
+            /* Improve text rendering */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Main Layout Container - Flexbox */
+        .container {
+            display: flex;
+            min-height: 100vh; /* Full viewport height */
+            flex-direction: row; /* Default: side-by-side */
+        }
+
+        /* Controls Panel (Left Side / Top on Mobile) */
+        .controls {
+            flex: 0 0 300px; /* Base width for desktop */
+            padding: 20px; /* Slightly reduced padding */
+            border-right: 1px solid #ccc; /* Desktop separator */
+            display: flex;
+            flex-direction: column; /* Stack elements vertically */
+            background-color: #FFF8DC; /* Ensure bg color */
+        }
+
+        .controls h1 {
+            font-size: 1.5em; /* Reset font size */
+            margin-top: 0;
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.3;
+        }
+
+        .display-area {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px; /* Reduced margin */
+            min-height: 60px;
+            border-radius: 4px;
+        }
+
+         .display-area p {
+             margin: 5px 0;
+             font-size: 1.1em;
+         }
+        .display-area span {
+            font-weight: bold;
+            display: block;
+            margin-top: 4px;
+            min-height: 1.2em;
+            word-wrap: break-word; /* Prevent long words overflowing */
+        }
+
+        .controls button {
+            padding: 12px 15px;
+            margin-bottom: 12px; /* Reduced margin */
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #eee;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+            /* Prevent zoom on double-tap on mobile */
+            touch-action: manipulation;
+        }
+
+        .controls button:hover {
+            background-color: #ddd;
+        }
+
+        .controls button:active {
+            background-color: #ccc;
+        }
+
+        /* Sequence List Panel (Right Side / Bottom on Mobile) */
+        .sequence-list {
+            flex: 1; /* Takes up remaining space */
+            padding: 20px; /* Slightly reduced padding */
+            overflow-y: auto; /* Add scrollbar if list gets long */
+            /* Ensure it can shrink if needed, though less likely here */
+            min-width: 0;
+        }
+
+        .sequence-list h2 {
+             margin-top: 0;
+             font-size: 1.3em;
+             margin-bottom: 15px;
+             border-bottom: 1px solid #ccc;
+             padding-bottom: 10px;
+        }
+
+        #savedSequence {
+            list-style-type: decimal;
+            padding-left: 25px;
+            margin: 0;
+        }
+
+        #savedSequence li {
+            padding: 8px 0;
+            font-size: 1.1em;
+            border-bottom: 1px dotted #eee;
+            line-height: 1.4;
+            word-wrap: break-word; /* Allow long items to wrap */
+        }
+
+        #savedSequence li:last-child {
+            border-bottom: none;
+        }
+
+        /* --- Mobile Responsiveness --- */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column; /* Stack columns vertically */
+            }
+
+            .controls {
+                flex: 0 0 auto; /* Don't base size on width, let content dictate height */
+                width: auto; /* Let it take full width */
+                border-right: none; /* Remove side border */
+                border-bottom: 1px solid #ccc; /* Add bottom border */
+                /* Ensure consistent padding on mobile */
+                padding: 15px;
+            }
+
+            .sequence-list {
+                flex: 1 1 auto; /* Allow list to grow/shrink, take remaining height */
+                height: 50vh; /* Example: give it a specific viewport height portion */
+                padding: 15px; /* Consistent padding */
+            }
+
+             .controls h1 {
+                 font-size: 1.3em; /* Slightly smaller title on mobile */
+             }
+            .display-area p {
+                font-size: 1em; /* Slightly smaller display text */
+            }
+             #savedSequence li {
+                font-size: 1em; /* Slightly smaller list text */
+            }
+
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Left Side / Top: Controls -->
+        <div class="controls">
+            <!-- *** UPDATED SIMPLER TITLE *** -->
+            <h1>Choreography Tool for Contemporary Ballet</h1>
+
+            <div class="display-area">
+                <p>Step: <span id="termDisplay">[Step]</span></p>
+                <p>Modifier: <span id="modifierDisplay">[Modifier]</span></p>
+            </div>
+
+            <button id="getTermBtn">Choose a step</button>
+            <button id="getModifierBtn">Modify it</button>
+            <button id="saveBtn">Add to list</button>
+            <button id="clearLastBtn">Clear last</button>
+            <button id="downloadBtn">Download List</button>
+        </div>
+
+        <!-- Right Side / Bottom: Saved Sequence List -->
+        <div class="sequence-list">
+            <h2>Saved Sequence</h2>
+            <ol id="savedSequence"></ol>
+        </div>
+    </div>
+
+    <script>
+        // --- Data Embedding ---
+        const balletTerms = [
+            "Allongé", "Arabesque", "Assemblé", "Attitude", "Balancé", "Ballonné",
+            "Ballotté", "Battement", "Battement dégagé", "Battement développé",
+            "Battement fondu", "Battement frappé", "Battement glissé", "Battement jeté",
+            "Battement lent", "Battement tendu", "Battu", "Bourrée (Pas de bourrée)",
+            "Brisé", "Cabriole", "Cambré", "Changement", "Changé", "Chassé", "Chaînés",
+            "Ciseaux", "Coupé", "Demi-plié", "Dégagé", "Détourné", "Développé",
+            "Échappé", "Elevé", "Enchaînement", "Entrechat", "Failli", "Fermé", "Fondu",
+            "Fouetté", "Frappé", "Glissade", "Grand battement", "Grand jeté",
+            "Grand plié", "Grand port de bras", "Grand rond de jambe", "Jeté",
+            "Jeté entrelacé", "Manèges", "Pas de basque", "Pas de chat", "Pas de cheval",
+            "Pas marché", "Passé", "Penché", "Petit battement", "Piqué", "Pirouette",
+            "Plié", "Port de bras", "Promenade", "Relevé", "Renversé", "Retiré",
+            "Reverence", "Rond de jambe", "Rond de jambe en l’air", "Rond de jambe à terre",
+            "Saut de basque", "Sauté", "Sissonne", "Soubresaut", "Sous-sus", "Soutenu",
+            "Sur le cou-de-pied", "Temps levé", "Temps lié", "Tendu", "Tombé",
+            "Tour en l’air", "Tour jeté"
+        ];
+
+        const actionModifiers = [
+            "Blur", "Blur inward", "Blur outward", "Burst", "Collapse", "Contract",
+            "Crumble", "Crystallize", "Detach", "Dim", "Disintegrate", "Dissolve",
+            "Distill", "Drift", "Drift downward", "Echo", "Echo backward", "Erode",
+            "Expand outward", "Fade", "Flick", "Flicker", "Float", "Flow", "Fluctuate",
+            "Flutter", "Fold", "Fragment", "Freeze", "Glitch", "Glow", "Hover",
+            "Inflate", "Invert", "Jerk", "Loop", "Magnetize", "Melt", "Mesh",
+            "Multiply", "Pause", "Perforate", "Pixelate", "Pop", "Pulse", "Pulse in",
+            "Pulse out", "Punctuate", "Quiver", "Radiate", "Reverse", "Rotate",
+            "Scatter", "Shake", "Shatter", "Shimmer", "Shudder", "Skitter", "Slide",
+            "Smear", "Snap", "Snap open", "Snap shut", "Soften", "Sous-sus", "Spiral",
+            "Spiral inward", "Spiral outward", "Stretch", "Strobe", "Suspend", "Swell",
+            "Swipe", "Tangle", "Teeter", "Tilt", "Undulate", "Vibrate", "Warp", "Wave",
+            "Zig-zag"
+        ];
+
+        // --- DOM Element References ---
+        const termDisplay = document.getElementById('termDisplay');
+        const modifierDisplay = document.getElementById('modifierDisplay');
+        const getTermBtn = document.getElementById('getTermBtn');
+        const getModifierBtn = document.getElementById('getModifierBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const clearLastBtn = document.getElementById('clearLastBtn');
+        const savedSequenceList = document.getElementById('savedSequence');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+
+        // --- State Variables ---
+        let currentTerm = "[Step]";
+        let currentModifier = "[Modifier]";
+
+        // --- Functions ---
+        function getRandomItem(arr) {
+            if (!arr || arr.length === 0) {
+                return "Error: No data";
+            }
+            const randomIndex = Math.floor(Math.random() * arr.length);
+            return arr[randomIndex];
+        }
+
+        function updateDisplays() {
+            termDisplay.textContent = currentTerm;
+            modifierDisplay.textContent = currentModifier;
+        }
+
+        function downloadSequence() {
+            const items = savedSequenceList.querySelectorAll('li');
+            if (items.length === 0) {
+                alert("The sequence list is empty. Nothing to download.");
+                return;
+            }
+
+            let fileContent = "Ballet Modifier Sequence\n";
+                fileContent += "=========================\n\n";
+
+            items.forEach((item, index) => {
+                fileContent += `${index + 1}. ${item.textContent}\n`;
+            });
+
+            const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'ballet-sequence.txt';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }
+
+
+        // --- Event Listeners ---
+        getTermBtn.addEventListener('click', () => {
+            currentTerm = getRandomItem(balletTerms);
+            updateDisplays();
+        });
+
+        getModifierBtn.addEventListener('click', () => {
+            currentModifier = getRandomItem(actionModifiers);
+            updateDisplays();
+        });
+
+        saveBtn.addEventListener('click', () => {
+            if (currentTerm !== "[Step]" && currentModifier !== "[Modifier]") {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${currentTerm} (${currentModifier})`;
+                savedSequenceList.appendChild(listItem);
+                // Optional: Reset displays after saving
+                // currentTerm = "[Step]";
+                // currentModifier = "[Modifier]";
+                // updateDisplays();
+            } else {
+                alert("Please choose both a step and a modifier before adding to the list.");
+            }
+        });
+
+        clearLastBtn.addEventListener('click', () => {
+            const lastItem = savedSequenceList.lastElementChild;
+            if (lastItem) {
+                savedSequenceList.removeChild(lastItem);
+            }
+        });
+
+        downloadBtn.addEventListener('click', downloadSequence);
+
+
+        // --- Initial Setup ---
+        updateDisplays();
+
+    </script>
+
+</body>
+</html>

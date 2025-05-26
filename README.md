@@ -20,7 +20,7 @@ TRY ME!: https://NoraGibson.github.io/artTOOLS/ballet_modifier1.html
 
   **Interactive_Creativity_Process_Tool**
 
-This interactive tool helps us, as artists, to understand that the creative process is not linear! We are constantly weighing many factors like risk-taking, technical skill, and connecting with ourselves or our audiences. This tool is meant for reflection on our practice. ❤
+This interactive tool helps us, as artists, to understand that the creative process is not linear! We are constantly weighing many factors like risk-taking, technical skill, and connecting with ourselves or our audiences. The sliders correspond to aspects measured by The S-curve (sigmoid function), often utilized in innovation and design processes. This tool is meant for reflection on our practice. ❤
 
 TRY ME!: https://NoraGibson.github.io/artTOOLS/creative_process_Tool.html
 

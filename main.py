@@ -141,7 +141,7 @@ st.markdown("""
 .footer-link {
   position: fixed !important;
   bottom: 12px !important;
-  right: 12px !important;
+  left: 12px !important;
   font-size: 13px !important;
   z-index: 9999 !important;
   background: rgba(255,255,255,0.8);
@@ -163,6 +163,7 @@ st.markdown("""
     noragibsonvisualist.com
   </a>
 </div>
+            
 """, unsafe_allow_html=True)
 
 

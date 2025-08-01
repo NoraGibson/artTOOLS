@@ -2,7 +2,7 @@
 artTOOLS is a collection of tools to inspire creativity.
 # artTOOLS
 
-**artTOOLS** is a collection of small, browser-based tools designed to inspire creativity and artistic exploration. Each tool is made collaboratively with AI, and built using HTML and JavaScript, and is meant to be lightweight, accessible, and usable across devices.
+**artTOOLS** is a collection of small, browser-based tools designed to inspire creativity and artistic exploration. Each tool is made collaboratively with AI, and built using Python, HTML and/or JavaScript, and is meant to be lightweight, accessible, and usable across devices.
 
 ## ✨ Current Tools
 

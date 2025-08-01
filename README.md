@@ -6,20 +6,22 @@ artTOOLS is a collection of tools to inspire creativity.
 
 ## ✨ Current Tools
 
-  **Choreography Tool**  
-  
-A generative tool designed to spark movement ideas and inspire new choreography. Save your poses within the app and play them back to build and memorize phrases. Accessible via mobile or desktop.
-
-TRY ME!: https://NoraGibson.github.io/artTOOLS/choreography_tool1.html
-
  **IMPROVED! Contemporary Ballet Choreography Tool**
  This tool improves upon the "Ballet Modifier" in a few ways: refined modifiers, additional ballet terms, and added ballet facings. Made in Python using Streamlit, this app, with its improved UI, allows users to create a list of ballet steps with contemporary modifications and traditional facings. Sequences may be saved and downloaded as a .txt file for sharing with other dancers for endless individual creative interpretation. Enjoy! Accessible via mobile or desktop.
+
+ TRY ME!: https://arttools-contemporaryballet.streamlit.app/
   
   **Ballet Modifier**
   
 This tool combines traditional ballet terminology with modifying dynamic action words to contemporize ballet and allow for creative collaboration between dancer and automation. Create a sequence of movements, and even download the list to share with other dancers. See how the instructions may be creatively interpreted by different minds and bodies!  Accessible via mobile or desktop.
 
 TRY ME!: https://NoraGibson.github.io/artTOOLS/ballet_modifier1.html
+
+  **Choreography Tool**  
+  
+A generative tool designed to spark movement ideas and inspire new choreography. Save your poses within the app and play them back to build and memorize phrases. Accessible via mobile or desktop.
+
+TRY ME!: https://NoraGibson.github.io/artTOOLS/choreography_tool1.html
 
   **Interactive_Creativity_Process_Tool**
 

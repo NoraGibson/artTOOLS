@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Art Viewer</title>
+    
+    <!-- AR.js library for marker-based AR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.0/aframe.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/aframe-ar.min.js"></script>
+    
+    <style>
+        /* Dark mode styling as requested */
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        /* Password and admin section styling */
+        .admin-section {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        input, button, select {
+            background-color: #3d3d3d;
+            color: white;
+            border: 1px solid #555;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            cursor: pointer;
+            background-color: #4a4a4a;
+        }
+        
+        button:hover {
+            background-color: #5a5a5a;
+        }
+        
+        /* Links styling - white and bold as requested */
+        a {
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        /* AR viewer styling */
+        .ar-section {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        #arContainer {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        /* Image list styling */
+        .image-item {
+            background-color: #2d2d2d;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #555;
+        }
+        
+        .image-preview {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 15px;
+            float: left;
+        }
+        
+        .image-info {
+            margin-left: 120px;
+        }
+        
+        .clear {
+            clear: both;
+        }
+        
+        .error {
+            color: #ff6b6b;
+            margin: 10px 0;
+        }
+        
+        .success {
+            color: #51cf66;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AR Art Viewer</h1>
+        
+        <!-- Admin Password Section -->
+        <div class="admin-section">
+            <h2>Admin Access</h2>
+            <input type="password" id="adminPassword" placeholder="Enter admin password">
+            <button onclick="checkPassword()">Access Admin Panel</button>
+            <div id="passwordError" class="error hidden">Incorrect password</div>
+        </div>
+        
+        <!-- Admin Panel (Hidden by default) -->
+        <div id="adminPanel" class="admin-section hidden">
+            <h2>Admin Panel</h2>
+            
+            <!-- Upload new image -->
+            <h3>Add New AR Artwork</h3>
+            <input type="file" id="imageUpload" accept="image/*">
+            <input type="url" id="vimeoUrl" placeholder="Vimeo video URL">
+            <button onclick="uploadImage()">Add Artwork</button>
+            <div id="uploadStatus"></div>
+            
+            <!-- List current images -->
+            <h3>Current Artworks</h3>
+            <div id="imageList">
+                <!-- Images will be populated here -->
+            </div>
+        </div>
+        
+        <!-- Public AR Viewer Section -->
+        <div class="ar-section">
+            <h2>AR Viewer</h2>
+            <p>Point your camera at an artwork to see it come to life!</p>
+            <button id="startAR" onclick="startARViewer()">Start AR Camera</button>
+            <div id="arContainer" class="hidden">
+                <!-- AR.js scene will be inserted here -->
+            </div>
+            <button id="stopAR" onclick="stopARViewer()" class="hidden">Stop AR</button>
+        </div>
+    </div>
+
+    <script>
+        // =================================================================
+        // AR MARKER GENERATION FUNCTIONS
+        // =================================================================
+        
+        function extractVimeoId(url) {
+            /* Extract video ID from Vimeo URL */
+            const match = url.match(/vimeo\.com\/(\d+)/);
+            return match ? match[1] : null;
+        }
+        
+        function generateARMarker(imageData, file) {
+            /* Generate AR marker data from uploaded image */
+            // Create a simple marker based on image characteristics
+            return {
+                type: 'pattern', // Use pattern markers for simplicity
+                imageHash: generateImageHash(file.name, file.size),
+                fileName: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+                created: Date.now()
+            };
+        }
+        
+        function generateImageHash(fileName, fileSize) {
+            /* Create a simple hash from file info for marker identification */
+            // Simple hash based on filename and size
+            let hash = 0;
+            const str = fileName + fileSize.toString();
+            
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            
+            return Math.abs(hash).toString(16);
+        }
+        // GLOBAL VARIABLES (like defining variables at top in Python)
+        // =================================================================
+        
+        // Simple password for admin access (change this!)
+        const ADMIN_PASSWORD = "artadmin123";
+        
+        // Storage key for saving data in browser
+        const STORAGE_KEY = "ar_artworks";
+        
+        // Track current AR state
+        let arSceneActive = false;
+        let currentArtworks = [];
+        
+        // =================================================================
+        // ADMIN FUNCTIONS (like defining functions in Python)
+        // =================================================================
+        
+        function checkPassword() {
+            /* Check if entered password matches admin password */
+            const enteredPassword = document.getElementById('adminPassword').value;
+            const errorDiv = document.getElementById('passwordError');
+            const adminPanel = document.getElementById('adminPanel');
+            
+            if (enteredPassword === ADMIN_PASSWORD) {
+                // Password correct - show admin panel
+                adminPanel.classList.remove('hidden');
+                errorDiv.classList.add('hidden');
+                loadImageList(); // Refresh the image list
+                // Clear password field for security
+                document.getElementById('adminPassword').value = '';
+            } else {
+                // Password incorrect - show error
+                errorDiv.classList.remove('hidden');
+            }
+        }
+        
+        function closeAdminPanel() {
+            /* Close the admin panel and clear password */
+            const adminPanel = document.getElementById('adminPanel');
+            const errorDiv = document.getElementById('passwordError');
+            
+            adminPanel.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+            document.getElementById('adminPassword').value = '';
+        }
+        
+        function uploadImage() {
+            /* Handle uploading new image and vimeo link */
+            const fileInput = document.getElementById('imageUpload');
+            const vimeoInput = document.getElementById('vimeoUrl');
+            const statusDiv = document.getElementById('uploadStatus');
+            
+            // Check if both fields are filled
+            if (!fileInput.files[0] || !vimeoInput.value) {
+                statusDiv.innerHTML = '<div class="error">Please select an image and enter a Vimeo URL</div>';
+                return;
+            }
+            
+            // Show processing message
+            statusDiv.innerHTML = '<div>Processing image and generating AR marker...</div>';
+            
+            // Read the uploaded image file
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    // Extract Vimeo video ID from URL
+                    const vimeoId = extractVimeoId(vimeoInput.value);
+                    if (!vimeoId) {
+                        statusDiv.innerHTML = '<div class="error">Invalid Vimeo URL. Please use format: https://vimeo.com/123456789</div>';
+                        return;
+                    }
+                    
+                    // Generate AR marker from image
+                    const markerData = generateARMarker(e.target.result, fileInput.files[0]);
+                    
+                    // Create new artwork object
+                    const newArtwork = {
+                        id: Date.now(), // Simple ID using timestamp
+                        imageName: fileInput.files[0].name,
+                        imageData: e.target.result, // Base64 image data
+                        vimeoUrl: vimeoInput.value,
+                        vimeoId: vimeoId,
+                        markerData: markerData, // AR marker information
+                        dateAdded: new Date().toLocaleDateString()
+                    };
+                    
+                    // Add to current artworks and save
+                    currentArtworks.push(newArtwork);
+                    saveArtworks();
+                    
+                    // Clear form and show success
+                    fileInput.value = '';
+                    vimeoInput.value = '';
+                    statusDiv.innerHTML = '<div class="success">Artwork added successfully with AR marker!</div>';
+                    
+                    // Refresh the image list
+                    loadImageList();
+                    
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    statusDiv.innerHTML = '<div class="error">Error processing image: ' + error.message + '</div>';
+                }
+            };
+            
+            reader.readAsDataURL(fileInput.files[0]);
+        }
+        
+        function deleteImage(artworkId) {
+            /* Remove an artwork from the collection */
+            console.log('Delete button clicked for artwork ID:', artworkId);
+            console.log('Current artworks count:', currentArtworks.length);
+            
+            const artwork = currentArtworks.find(art => art.id == artworkId);
+            const artworkName = artwork ? artwork.imageName : 'Unknown';
+            console.log('Found artwork to delete:', artworkName);
+            
+            // Create a custom confirmation using DOM instead of browser dialog
+            const confirmDiv = document.createElement('div');
+            confirmDiv.style.cssText = `
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: #2d2d2d; color: white; padding: 20px; border-radius: 8px;
+                border: 2px solid #555; z-index: 10000; text-align: center;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            `;
+            confirmDiv.innerHTML = `
+                <p>Delete "${artworkName}"?</p>
+                <button id="confirmYes" style="background: #d63031; color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer;">Yes, Delete</button>
+                <button id="confirmNo" style="background: #555; color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+            `;
+            
+            document.body.appendChild(confirmDiv);
+            
+            // Handle yes button
+            document.getElementById('confirmYes').onclick = function() {
+                console.log('User confirmed deletion via custom dialog');
+                const beforeLength = currentArtworks.length;
+                currentArtworks = currentArtworks.filter(artwork => artwork.id != artworkId);
+                const afterLength = currentArtworks.length;
+                
+                console.log('Artworks before deletion:', beforeLength);
+                console.log('Artworks after deletion:', afterLength);
+                
+                if (beforeLength > afterLength) {
+                    saveArtworks();
+                    console.log('Saved updated artworks');
+                    loadImageList(); // Refresh the list
+                    console.log('Artwork deleted successfully!');
+                } else {
+                    console.error('No artwork was deleted - ID not found');
+                }
+                
+                document.body.removeChild(confirmDiv);
+            };
+            
+            // Handle no button
+            document.getElementById('confirmNo').onclick = function() {
+                console.log('User cancelled deletion via custom dialog');
+                document.body.removeChild(confirmDiv);
+            };
+        }
+        
+        function loadImageList() {
+            /* Display all current artworks in admin panel */
+            const imageList = document.getElementById('imageList');
+            
+            if (currentArtworks.length === 0) {
+                imageList.innerHTML = '<p>No artworks uploaded yet.</p>';
+                return;
+            }
+            
+            let html = '';
+            currentArtworks.forEach(artwork => {
+                html += `
+                    <div class="image-item">
+                        <img src="${artwork.imageData}" alt="${artwork.imageName}" class="image-preview">
+                        <div class="image-info">
+                            <strong>${artwork.imageName}</strong><br>
+                            <strong>Vimeo:</strong> <a href="${artwork.vimeoUrl}" target="_blank">${artwork.vimeoUrl}</a><br>
+                            <strong>Added:</strong> ${artwork.dateAdded}<br>
+                            <button onclick="deleteImage(${artwork.id})" type="button" style="background-color: #d63031; margin-top: 10px;">Delete Artwork</button>
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+                `;
+            });
+            
+            imageList.innerHTML = html;
+        }
+        
+        // =================================================================
+        // DATA STORAGE FUNCTIONS (like file I/O in Python)
+        // =================================================================
+        
+        function saveArtworks() {
+            /* Save artworks to browser storage */
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentArtworks));
+        }
+        
+        function loadArtworks() {
+            /* Load artworks from browser storage */
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                currentArtworks = JSON.parse(saved);
+            }
+        }
+        
+        // =================================================================
+        // AR VIEWER FUNCTIONS (the main AR functionality)
+        // =================================================================
+        
+        function startARViewer() {
+            /* Initialize the AR camera and marker detection */
+            if (currentArtworks.length === 0) {
+                alert('No artworks available yet. Please add some artworks in the admin panel first.');
+                return;
+            }
+            
+            const arContainer = document.getElementById('arContainer');
+            const startButton = document.getElementById('startAR');
+            const stopButton = document.getElementById('stopAR');
+            
+            // Show AR container and swap buttons
+            arContainer.classList.remove('hidden');
+            startButton.classList.add('hidden');
+            stopButton.classList.remove('hidden');
+            
+            // Create AR scene with dynamic markers
+            createARScene();
+            
+            arSceneActive = true;
+        }
+        
+        function createARScene() {
+            /* Create the AR.js scene with all uploaded artwork markers */
+            const arContainer = document.getElementById('arContainer');
+            
+            let sceneHTML = `
+                <a-scene
+                    embedded
+                    arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth:1280; sourceHeight:960; displayWidth: 1280; displayHeight: 960;"
+                    style="width: 100%; height: 400px;">
+                    
+                    <!-- Assets section for videos -->
+                    <a-assets>
+            `;
+            
+            // Add video assets for each artwork
+            currentArtworks.forEach(artwork => {
+                sceneHTML += `
+                    <video
+                        id="video${artwork.id}"
+                        src="https://player.vimeo.com/external/${artwork.vimeoId}.hd.mp4?s=HASH&profile_id=175"
+                        preload="auto"
+                        webkit-playsinline
+                        playsinline
+                        crossorigin="anonymous"
+                        loop="true">
+                    </video>
+                `;
+            });
+            
+            sceneHTML += `
+                    </a-assets>
+                    
+                    <!-- Camera -->
+                    <a-camera gps-camera rotation-reader></a-camera>
+            `;
+            
+            // Add markers for each artwork
+            currentArtworks.forEach(artwork => {
+                sceneHTML += createMarkerHTML(artwork);
+            });
+            
+            sceneHTML += `
+                    <!-- Instructions text -->
+                    <a-text 
+                        value="Point camera at artwork to see AR video overlay"
+                        position="0 0 -3"
+                        color="white"
+                        align="center"
+                        visible="true">
+                    </a-text>
+                </a-scene>
+            `;
+            
+            arContainer.innerHTML = sceneHTML;
+            
+            // Set up marker event handlers after scene is created
+            setTimeout(() => {
+                setupMarkerEvents();
+            }, 1000);
+        }
+        
+        function createMarkerHTML(artwork) {
+            /* Create HTML for individual AR marker */
+            // Using pattern markers for now (in production, would use NFT markers)
+            return `
+                <a-marker 
+                    id="marker${artwork.id}"
+                    type="pattern" 
+                    url="data:text/plain;base64,${btoa(generatePatternData(artwork))}"
+                    smooth="true"
+                    smoothCount="10"
+                    smoothTolerance="0.01"
+                    smoothThreshold="5">
+                    
+                    <!-- Video plane that overlays on marker -->
+                    <a-video 
+                        src="#video${artwork.id}"
+                        position="0 0 0"
+                        rotation="-90 0 0"
+                        width="2"
+                        height="1.5"
+                        opacity="0.9">
+                    </a-video>
+                    
+                    <!-- Optional: Add artwork title -->
+                    <a-text 
+                        value="${artwork.imageName}"
+                        position="0 -1 0"
+                        rotation="-90 0 0"
+                        color="white"
+                        align="center"
+                        scale="0.5 0.5 0.5">
+                    </a-text>
+                </a-marker>
+            `;
+        }
+        
+        function generatePatternData(artwork) {
+            /* Generate pattern marker data from artwork image hash */
+            // This is a simplified pattern generator
+            // In production, you'd create actual .patt files from uploaded images
+            const hash = artwork.markerData.imageHash;
+            let pattern = "";
+            
+            // Create a 16x16 pattern based on image hash
+            for (let i = 0; i < 16; i++) {
+                for (let j = 0; j < 16; j++) {
+                    const value = parseInt(hash.charAt((i + j) % hash.length), 16);
+                    pattern += value > 8 ? "1 1 1\n" : "0 0 0\n";
+                }
+            }
+            
+            return pattern;
+        }
+        
+        function setupMarkerEvents() {
+            /* Set up event handlers for marker detection */
+            currentArtworks.forEach(artwork => {
+                const marker = document.querySelector(`#marker${artwork.id}`);
+                const video = document.querySelector(`#video${artwork.id}`);
+                
+                if (marker && video) {
+                    // Play video when marker is found
+                    marker.addEventListener('markerFound', function() {
+                        console.log(`Marker found for ${artwork.imageName}`);
+                        video.play();
+                    });
+                    
+                    // Pause video when marker is lost
+                    marker.addEventListener('markerLost', function() {
+                        console.log(`Marker lost for ${artwork.imageName}`);
+                        video.pause();
+                    });
+                }
+            });
+        }
+        
+        function stopARViewer() {
+            /* Stop the AR camera and hide viewer */
+            const arContainer = document.getElementById('arContainer');
+            const startButton = document.getElementById('startAR');
+            const stopButton = document.getElementById('stopAR');
+            
+            // Clear AR scene
+            arContainer.innerHTML = '';
+            arContainer.classList.add('hidden');
+            
+            // Swap buttons back
+            startButton.classList.remove('hidden');
+            stopButton.classList.add('hidden');
+            
+            arSceneActive = false;
+        }
+        
+        // =================================================================
+        // INITIALIZATION (like if __name__ == "__main__" in Python)
+        // =================================================================
+        
+        function initializeApp() {
+            /* Set up the app when page loads */
+            console.log("Initializing AR Art Viewer...");
+            
+            // Load any existing artworks from storage
+            loadArtworks();
+            
+            console.log(`Loaded ${currentArtworks.length} artworks from storage`);
+        }
+        
+        // Run initialization when page loads
+        window.addEventListener('load', initializeApp);
+        
+        // Add ESC key handler to close admin panel
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const adminPanel = document.getElementById('adminPanel');
+                if (!adminPanel.classList.contains('hidden')) {
+                    closeAdminPanel();
+                }
+            }
+        });
+        
+        // =================================================================
+        // NOTES FOR FULL AR IMPLEMENTATION
+        // =================================================================
+        
+        /*
+        To make this fully functional, you'd need to:
+        
+        1. MARKER GENERATION:
+           - Send uploaded images to AR.js marker generator
+           - Save generated .patt files
+           - Create AR markers for each uploaded image
+        
+        2. VIMEO INTEGRATION:
+           - Extract video ID from Vimeo URL
+           - Create video elements that overlay on markers
+           - Handle video play/pause when markers appear/disappear
+        
+        3. AR MARKER DETECTION:
+           - Dynamically create <a-marker> elements for each uploaded image
+           - Bind video overlays to specific markers
+           - Handle multiple markers in the same scene
+        
+        This current version provides the framework and admin interface.
+        The AR functionality would need additional implementation for
+        full marker generation and video overlay capabilities.
+        */
+        
+    </script>
+</body>
+</html>

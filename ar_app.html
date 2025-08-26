@@ -391,19 +391,87 @@
         }
         
         // =================================================================
-        // DATA STORAGE FUNCTIONS (like file I/O in Python)
+        // DATA STORAGE FUNCTIONS (using GitHub JSON file for sharing)
         // =================================================================
         
-        function saveArtworks() {
-            /* Save artworks to browser storage */
+        async function saveArtworks() {
+            /* Save artworks to both localStorage AND display instructions for GitHub */
             localStorage.setItem(STORAGE_KEY, JSON.stringify(currentArtworks));
+            
+            // Show instructions for updating GitHub JSON file
+            if (currentArtworks.length > 0) {
+                showGitHubUpdateInstructions();
+            }
         }
         
-        function loadArtworks() {
-            /* Load artworks from browser storage */
+        async function loadArtworks() {
+            /* Load artworks from GitHub JSON file first, then fallback to localStorage */
+            try {
+                // First try to load from GitHub JSON file
+                const response = await fetch('./artworks.json?t=' + Date.now()); // Cache bust
+                if (response.ok) {
+                    const githubArtworks = await response.json();
+                    currentArtworks = githubArtworks;
+                    console.log('Loaded artworks from GitHub JSON file');
+                    return;
+                }
+            } catch (error) {
+                console.log('No artworks.json file found, trying localStorage');
+            }
+            
+            // Fallback to localStorage if GitHub file doesn't exist
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 currentArtworks = JSON.parse(saved);
+                console.log('Loaded artworks from localStorage');
+            }
+        }
+        
+        function showGitHubUpdateInstructions() {
+            /* Show instructions for updating the shared JSON file */
+            const instructions = document.getElementById('githubInstructions') || createInstructionsDiv();
+            
+            const jsonData = JSON.stringify(currentArtworks, null, 2);
+            
+            instructions.innerHTML = `
+                <h4>📁 Update Shared Storage</h4>
+                <p>To make your artworks visible on all devices:</p>
+                <ol>
+                    <li>Copy the JSON data below</li>
+                    <li>Go to your GitHub repo: <strong>artTOOLS</strong></li>
+                    <li>Create a new file called <strong>artworks.json</strong></li>
+                    <li>Paste the JSON data and save</li>
+                    <li>Your AR artworks will now work on all devices!</li>
+                </ol>
+                <textarea readonly style="width: 100%; height: 200px; background: #1a1a1a; color: white; border: 1px solid #555; padding: 10px; font-family: monospace;">${jsonData}</textarea>
+                <button onclick="copyToClipboard('${jsonData.replace(/'/g, "\\'")}')">Copy JSON Data</button>
+                <button onclick="hideGitHubInstructions()" style="background: #555; margin-left: 10px;">Hide Instructions</button>
+            `;
+        }
+        
+        function createInstructionsDiv() {
+            /* Create the instructions div if it doesn't exist */
+            const div = document.createElement('div');
+            div.id = 'githubInstructions';
+            div.style.cssText = 'background: #2d2d2d; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #555;';
+            
+            const adminPanel = document.getElementById('adminPanel');
+            adminPanel.appendChild(div);
+            return div;
+        }
+        
+        function copyToClipboard(text) {
+            /* Copy JSON data to clipboard */
+            navigator.clipboard.writeText(text).then(() => {
+                alert('JSON data copied to clipboard!');
+            });
+        }
+        
+        function hideGitHubInstructions() {
+            /* Hide the GitHub instructions */
+            const instructions = document.getElementById('githubInstructions');
+            if (instructions) {
+                instructions.style.display = 'none';
             }
         }
         

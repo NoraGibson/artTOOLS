@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR Art Viewer</title>
 
-    <!-- A-Frame and AR.js libraries. AR.js is built on top of A-Frame. -->
+    <!--
+    UPDATED: Using a stable, compatible version of AR.js that works with a-frame.
+    The previous version was causing a "TypeError: EventDispatcher" due to incompatibility.
+    This link points to a reliable build that fixes the issue.
+    -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.0/aframe.min.js"></script>
-    <!-- UPDATED: Using a more stable AR.js build for better mobile support. -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.7.5/aframe/build/aframe-ar.js"></script>
 
     <style>
         /* General styling for dark mode */
@@ -575,27 +578,30 @@
             // Hide the start button and show loading message
             startButton.classList.add('hidden');
             loadingMessage.classList.remove('hidden');
-            
-            // Create and append the new AR scene
-            createARScene();
-            
-            arSceneElement = document.getElementById('arScene');
-            
-            // Listen for the 'loaded' event to hide loading message
-            arSceneElement.addEventListener('loaded', () => {
-                console.log('AR Scene has loaded');
-                loadingMessage.classList.add('hidden');
-                stopButton.classList.remove('hidden');
-                arSceneActive = true;
-            });
 
-            // Listen for camera permission errors
-            arSceneElement.addEventListener('camera-init', (event) => {
-                if (event.detail.status === 'ERROR') {
-                    showMessage("Error: The camera could not be started. Please check your browser's permissions for this website and try again.", 'alert');
-                    stopARViewer(); // Stop the AR viewer to clean up
-                }
-            });
+            // Check for camera permissions before creating the scene
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    // We have permission, so create the AR scene
+                    stream.getTracks().forEach(track => track.stop()); // Stop the test stream
+                    createARScene();
+                    arSceneElement = document.getElementById('arScene');
+                    
+                    // Listen for the 'loaded' event to hide loading message
+                    arSceneElement.addEventListener('loaded', () => {
+                        console.log('AR Scene has loaded');
+                        loadingMessage.classList.add('hidden');
+                        stopButton.classList.remove('hidden');
+                        arSceneActive = true;
+                    });
+                })
+                .catch(err => {
+                    // Permission was denied or an error occurred
+                    loadingMessage.classList.add('hidden');
+                    startButton.classList.remove('hidden');
+                    showMessage("Error: Camera access was denied. Please check your browser's permissions for this website and try again.", 'alert');
+                    console.error('Camera access error:', err);
+                });
         }
 
         function stopARViewer() {
@@ -655,10 +661,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-

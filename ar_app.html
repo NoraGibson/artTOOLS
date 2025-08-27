@@ -489,25 +489,46 @@
             arScene.setAttribute('renderer', 'logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;');
             arScene.setAttribute('style', 'width: 100%; height: 100%;');
 
+            // Add the dynamic markers for each artwork
+            currentArtworks.forEach(artwork => {
+                const marker = document.createElement('a-marker');
+                // Use NFT tracking for custom markers from base64 data
+                marker.setAttribute('type', 'nft');
+                marker.setAttribute('url', 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({
+                    type: 'image',
+                    imageURL: artwork.imageData,
+                    imageHash: artwork.markerData.imageHash
+                })));
+                
+                // Add an image entity as the AR content
+                const image = document.createElement('a-image');
+                image.setAttribute('src', artwork.imageData);
+                image.setAttribute('position', '0 0.5 0');
+                image.setAttribute('scale', '1 1 1');
+                marker.appendChild(image);
+                
+                arScene.appendChild(marker);
+            });
+            
             // Add a test marker for the HIRO pattern
-            const marker = document.createElement('a-marker');
-            marker.setAttribute('preset', 'hiro');
+            const hiroMarker = document.createElement('a-marker');
+            hiroMarker.setAttribute('preset', 'hiro');
 
             const box = document.createElement('a-box');
             box.setAttribute('position', '0 0.5 0');
             box.setAttribute('material', 'color: red;');
             box.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 3000;');
-            marker.appendChild(box);
+            hiroMarker.appendChild(box);
             
             const text = document.createElement('a-text');
-            text.setAttribute('value', 'AR Working!');
+            text.setAttribute('value', 'AR Test');
             text.setAttribute('position', '0 1 0');
             text.setAttribute('color', 'white');
             text.setAttribute('align', 'center');
             text.setAttribute('scale', '0.5 0.5 0.5');
-            marker.appendChild(text);
+            hiroMarker.appendChild(text);
 
-            arScene.appendChild(marker);
+            arScene.appendChild(hiroMarker);
 
             // You must always have a camera entity in an A-Frame scene
             const camera = document.createElement('a-entity');
@@ -612,5 +633,7 @@
     </script>
 </body>
 </html>
+
+
 
 

@@ -170,13 +170,33 @@
         <!-- Public AR Viewer Section -->
         <div class="ar-section">
             <h2>AR Viewer</h2>
-            <p>Point your camera at an artwork to see it come to life!</p>
+            <p>Point your camera at the Hiro marker below to test AR!</p>
             <div id="deviceInfo" style="margin: 10px 0; font-size: 14px; color: #ccc;"></div>
+            
+            <!-- Test Hiro Marker -->
+            <div style="background: white; padding: 20px; margin: 20px auto; width: 200px; text-align: center; border-radius: 8px;">
+                <h4 style="color: black; margin: 10px 0;">HIRO Test Marker</h4>
+                <svg width="160" height="160" viewBox="0 0 160 160" style="border: 2px solid black;">
+                    <rect width="160" height="160" fill="white"/>
+                    <rect x="20" y="20" width="120" height="120" fill="black"/>
+                    <rect x="40" y="40" width="80" height="80" fill="white"/>
+                    <!-- Simple HIRO-like pattern -->
+                    <rect x="60" y="50" width="40" height="10" fill="black"/>
+                    <rect x="50" y="70" width="20" height="20" fill="black"/>
+                    <rect x="90" y="70" width="20" height="20" fill="black"/>
+                    <rect x="60" y="100" width="40" height="10" fill="black"/>
+                </svg>
+                <p style="color: black; font-size: 12px; margin: 10px 0;">Point your camera at this pattern</p>
+            </div>
+            
             <button id="startAR" onclick="startARViewer()">Start AR Camera</button>
+            <button id="testCamera" onclick="testCamera()" style="background: #4CAF50; margin-left: 10px;">Test Camera Only</button>
             <div id="arContainer" class="hidden">
                 <!-- AR.js scene will be inserted here -->
             </div>
             <button id="stopAR" onclick="stopARViewer()" class="hidden">Stop AR</button>
+            
+            <div id="debugInfo" style="margin-top: 20px; font-size: 12px; color: #888;"></div>
         </div>
     </div>
 
@@ -553,90 +573,178 @@
         }
         
         function createARScene() {
-            /* Create the AR.js scene with better mobile support */
+            /* Create AR scene with iOS Chrome compatibility fixes */
             const arContainer = document.getElementById('arContainer');
             
             console.log('Creating AR scene for device:', isIOS ? 'iOS' : 'Other');
             
-            // Basic scene configuration optimized for mobile
-            const sceneConfig = isIOS ? 
-                'embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth: 640; sourceHeight: 480; displayWidth: 640; displayHeight: 480; cameraParametersUrl: https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/data/camera_para.dat;"' :
-                'embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"';
-
-            let sceneHTML = `
-                <a-scene
-                    ${sceneConfig}
-                    vr-mode-ui="enabled: false"
-                    renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;"
-                    style="width: 100%; height: 400px;">
-                    
-                    <a-assets>
-            `;
+            if (isIOS) {
+                // For iOS, try a more basic approach with explicit camera settings
+                arContainer.innerHTML = `
+                    <div class="ar-status">Loading AR for iOS...</div>
+                    <a-scene
+                        embedded
+                        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; cameraParametersUrl: https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/data/camera_para.dat; maxDetectionRate: 30; canvasWidth: 640; canvasHeight: 480;"
+                        vr-mode-ui="enabled: false"
+                        style="width: 100%; height: 400px;"
+                        renderer="antialias: false; alpha: true; precision: mediump;">
+                        
+                        <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
+                            <a-box position="0 0.5 0" material="color: red;" 
+                                   animation="property: rotation; to: 0 360 0; loop: true; dur: 3000;"
+                                   scale="0.5 0.5 0.5">
+                            </a-box>
+                            <a-text value="AR Working!" position="0 1.2 0" color="white" align="center" scale="0.8 0.8 0.8"></a-text>
+                        </a-marker>
+                        
+                        <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
+                    </a-scene>
+                `;
+            } else {
+                // Desktop/Android version
+                arContainer.innerHTML = `
+                    <div class="ar-status">AR Scene Active - Point at Hiro marker</div>
+                    <a-scene
+                        embedded
+                        arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
+                        vr-mode-ui="enabled: false"
+                        renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;"
+                        style="width: 100%; height: 400px;">
+                        
+                        <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance=".01" smoothThreshold="5">
+                            <a-box position="0 0.5 0" material="color: red;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000;"></a-box>
+                            <a-text value="AR Working! Point at Hiro marker" position="0 1 0" color="white" align="center" scale="0.5 0.5 0.5"></a-text>
+                        </a-marker>
+                        
+                        <a-text 
+                            value="Point camera at Hiro marker pattern to test AR"
+                            position="0 -1.5 -3"
+                            color="white"
+                            align="center"
+                            scale="0.8 0.8 0.8">
+                        </a-text>
+                        
+                        <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
+                    </a-scene>
+                `;
+            }
             
-            // For now, use simple test content instead of complex video integration
-            sceneHTML += `
-                    </a-assets>
-                    
-                    <!-- Test marker using built-in HIRO pattern -->
-                    <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance=".01" smoothThreshold="5">
-                        <a-box position="0 0.5 0" material="color: red;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000;"></a-box>
-                        <a-text value="AR Working! Point at Hiro marker" position="0 1 0" color="white" align="center" scale="0.5 0.5 0.5"></a-text>
-                    </a-marker>
-                    
-                    <!-- Instructions -->
-                    <a-text 
-                        value="Point camera at Hiro marker pattern to test AR"
-                        position="0 -1.5 -3"
-                        color="white"
-                        align="center"
-                        scale="0.8 0.8 0.8">
-                    </a-text>
-                    
-                    <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
-                </a-scene>
-            `;
-            
-            arContainer.innerHTML = `
-                <div class="ar-status">AR Scene Active - Point at Hiro marker</div>
-                ${sceneHTML}
-            `;
-            
-            // Add error handling
+            // Monitor AR scene initialization
             setTimeout(() => {
                 const scene = document.querySelector('a-scene');
                 if (scene) {
-                    scene.addEventListener('renderstart', function() {
-                        console.log('AR scene started successfully');
-                        const statusDiv = arContainer.querySelector('.ar-status');
-                        if (statusDiv) {
-                            statusDiv.textContent = 'AR Active - Point camera at Hiro marker';
-                        }
+                    // Check if camera feed is actually working
+                    scene.addEventListener('camera-init', function() {
+                        console.log('Camera initialized successfully');
+                        updateARStatus('Camera active - Point at Hiro marker');
                     });
                     
                     scene.addEventListener('camera-error', function(event) {
-                        console.error('Camera error in scene:', event);
-                        const statusDiv = arContainer.querySelector('.ar-status');
-                        if (statusDiv) {
-                            statusDiv.textContent = 'Camera Error - Try refreshing page';
-                        }
+                        console.error('Camera error:', event);
+                        updateARStatus('Camera Error - Try refreshing');
                     });
+                    
+                    scene.addEventListener('renderstart', function() {
+                        console.log('AR rendering started');
+                        updateARStatus('AR Active - Point at Hiro marker');
+                    });
+                    
+                    // Check for video element after a delay
+                    setTimeout(() => {
+                        const video = scene.querySelector('video') || document.querySelector('video');
+                        if (video) {
+                            console.log('Video element found:', video);
+                            if (video.srcObject) {
+                                updateARStatus('Camera feed active - Point at Hiro marker');
+                            }
+                        } else {
+                            console.warn('No video element found - camera may not be working');
+                            updateARStatus('Camera initialization issue - Try refresh');
+                        }
+                    }, 3000);
                 }
             }, 1000);
         }
+
+        function updateARStatus(message) {
+            /* Update the AR status message */
+            const statusDiv = document.querySelector('.ar-status');
+            if (statusDiv) {
+                statusDiv.textContent = message;
+            }
+        }
         
-        function stopARViewer() {
-            /* Stop the AR camera and hide viewer */
+        function testCamera() {
+            /* Test camera access without AR.js to isolate issues */
             const arContainer = document.getElementById('arContainer');
-            const startButton = document.getElementById('startAR');
-            const stopButton = document.getElementById('stopAR');
+            const debugInfo = document.getElementById('debugInfo');
             
-            arContainer.innerHTML = '';
+            arContainer.classList.remove('hidden');
+            arContainer.innerHTML = `
+                <div class="ar-status">Testing camera access...</div>
+                <video id="testVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+            `;
+            
+            const video = document.getElementById('testVideo');
+            
+            // Try different camera constraints for iOS
+            const constraints = isIOS ? {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 640, max: 1280 },
+                    height: { ideal: 480, max: 720 }
+                }
+            } : {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
+            
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(function(stream) {
+                    console.log('Camera test - Stream obtained:', stream);
+                    video.srcObject = stream;
+                    
+                    const statusDiv = arContainer.querySelector('.ar-status');
+                    statusDiv.textContent = 'Camera test successful! You should see camera feed.';
+                    
+                    debugInfo.innerHTML = `
+                        <strong>Camera Test Results:</strong><br>
+                        ✅ Camera permission: Granted<br>
+                        ✅ Stream active: Yes<br>
+                        📹 Video tracks: ${stream.getVideoTracks().length}<br>
+                        📱 Track settings: ${JSON.stringify(stream.getVideoTracks()[0]?.getSettings() || {}, null, 2)}<br>
+                        <button onclick="stopCameraTest()" style="margin-top: 10px; background: #f44336;">Stop Camera Test</button>
+                    `;
+                })
+                .catch(function(error) {
+                    console.error('Camera test failed:', error);
+                    const statusDiv = arContainer.querySelector('.ar-status');
+                    statusDiv.textContent = 'Camera test failed!';
+                    
+                    debugInfo.innerHTML = `
+                        <strong>Camera Test Results:</strong><br>
+                        ❌ Camera permission: Denied or Error<br>
+                        📱 Error: ${error.name} - ${error.message}<br>
+                        💡 Try: Allow camera permission and refresh page
+                    `;
+                });
+        }
+        
+        function stopCameraTest() {
+            /* Stop the camera test */
+            const video = document.getElementById('testVideo');
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            
+            const arContainer = document.getElementById('arContainer');
             arContainer.classList.add('hidden');
+            arContainer.innerHTML = '';
             
-            startButton.classList.remove('hidden');
-            stopButton.classList.add('hidden');
-            
-            arSceneActive = false;
+            document.getElementById('debugInfo').innerHTML = '';
         }
 
         // =================================================================

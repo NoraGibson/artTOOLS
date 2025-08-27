@@ -7,6 +7,7 @@
 
     <!-- A-Frame and AR.js libraries. AR.js is built on top of A-Frame. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.0/aframe.min.js"></script>
+    <!-- We're now using a direct link to the AR.js library to ensure the latest version -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
@@ -95,6 +96,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            animation: fadeIn 0.3s ease-out;
         }
 
         .modal-content {
@@ -105,7 +107,6 @@
             max-width: 400px;
             text-align: center;
             box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
-            animation: fadeIn 0.3s ease-out;
         }
 
         .modal-content p {
@@ -186,27 +187,10 @@
 
             <button id="startAR" onclick="startARViewer()">Start AR Camera</button>
             <button id="stopAR" onclick="stopARViewer()" class="hidden">Stop AR</button>
+            <p id="loadingMessage" class="hidden">Starting AR, please wait...</p>
             
             <div id="arContainer">
-                <!-- The A-Frame scene is now a permanent part of the HTML -->
-                <a-scene
-                    id="arScene"
-                    embedded
-                    arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
-                    vr-mode-ui="enabled: false"
-                    renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;"
-                    style="width: 100%; height: 100%; display: none;">
-
-                    <!-- A-Frame marker for the HIRO pattern. This is a good test. -->
-                    <a-marker preset="hiro">
-                        <a-box position="0 0.5 0" material="color: red;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000;"></a-box>
-                        <a-text value="AR Working!" position="0 1 0" color="white" align="center" scale="0.5 0.5 0.5"></a-text>
-                    </a-marker>
-                    
-                    <!-- You must always have a camera entity in an A-Frame scene -->
-                    <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
-
-                </a-scene>
+                <!-- The A-Frame scene will be created and removed here dynamically -->
             </div>
             
             <div id="debugInfo" style="margin-top: 20px; font-size: 12px; color: #888;"></div>
@@ -261,7 +245,6 @@
             }
         }
 
-        // The rest of your utility functions remain the same
         function extractVimeoId(url) {
             const match = url.match(/(?:vimeo\.com\/)(\d+)/);
             return match ? match[1] : null;
@@ -290,7 +273,7 @@
         }
 
         // =================================================================
-        // ADMIN FUNCTIONS (updated to use custom modal)
+        // ADMIN FUNCTIONS
         // =================================================================
 
         function checkPassword() {
@@ -410,10 +393,14 @@
                 showGitHubUpdateInstructions();
             }
         }
-        
+
+        // IMPORTANT: The raw URL to your artworks.json file on GitHub is now placed here
+        const GITHUB_JSON_URL = "https://raw.githubusercontent.com/NoraGibson/artTOOLS/refs/heads/main/artworks.json";
+
         async function loadArtworks() {
             try {
-                const response = await fetch('./artworks.json?t=' + Date.now());
+                // First, try to load from the GitHub URL to ensure data is shared
+                const response = await fetch(GITHUB_JSON_URL + '?t=' + Date.now());
                 if (response.ok) {
                     const githubArtworks = await response.json();
                     currentArtworks = Array.isArray(githubArtworks) ? githubArtworks : [];
@@ -421,9 +408,10 @@
                     return;
                 }
             } catch (error) {
-                console.log('No artworks.json file found, trying localStorage');
+                console.log('Could not fetch from GitHub. Reason:', error);
             }
             
+            // If fetching from GitHub fails, fall back to local storage
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 currentArtworks = JSON.parse(saved);
@@ -487,35 +475,99 @@
         // =================================================================
         // AR VIEWER FUNCTIONS
         // =================================================================
+        
+        function createARScene() {
+            const arContainer = document.getElementById('arContainer');
+            arContainer.innerHTML = ''; // Clear previous scene if it exists
+
+            // Create the a-scene element
+            const arScene = document.createElement('a-scene');
+            arScene.setAttribute('id', 'arScene');
+            arScene.setAttribute('embedded', '');
+            arScene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; trackingMethod: best;');
+            arScene.setAttribute('vr-mode-ui', 'enabled: false');
+            arScene.setAttribute('renderer', 'logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;');
+            arScene.setAttribute('style', 'width: 100%; height: 100%;');
+
+            // Add a test marker for the HIRO pattern
+            const marker = document.createElement('a-marker');
+            marker.setAttribute('preset', 'hiro');
+
+            const box = document.createElement('a-box');
+            box.setAttribute('position', '0 0.5 0');
+            box.setAttribute('material', 'color: red;');
+            box.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 3000;');
+            marker.appendChild(box);
+            
+            const text = document.createElement('a-text');
+            text.setAttribute('value', 'AR Working!');
+            text.setAttribute('position', '0 1 0');
+            text.setAttribute('color', 'white');
+            text.setAttribute('align', 'center');
+            text.setAttribute('scale', '0.5 0.5 0.5');
+            marker.appendChild(text);
+
+            arScene.appendChild(marker);
+
+            // You must always have a camera entity in an A-Frame scene
+            const camera = document.createElement('a-entity');
+            camera.setAttribute('camera', '');
+            camera.setAttribute('look-controls-enabled', 'false');
+            arScene.appendChild(camera);
+
+            arContainer.appendChild(arScene);
+        }
 
         function startARViewer() {
-            /* Show the AR scene and the stop button */
             if (currentArtworks.length === 0) {
                 showMessage('No artworks available yet. Please add some in the admin panel.');
                 return;
             }
 
-            const arScene = document.getElementById('arScene');
             const startButton = document.getElementById('startAR');
             const stopButton = document.getElementById('stopAR');
+            const loadingMessage = document.getElementById('loadingMessage');
+            const arContainer = document.getElementById('arContainer');
 
-            arScene.style.display = 'block'; // Show the a-scene
-            startButton.style.display = 'none'; // Hide the start button
-            stopButton.style.display = 'block'; // Show the stop button
+            // Hide the start button and show loading message
+            startButton.classList.add('hidden');
+            loadingMessage.classList.remove('hidden');
+            
+            // Create and append the new AR scene
+            createARScene();
+            
+            const arScene = document.getElementById('arScene');
+            
+            // Listen for the 'loaded' event to hide loading message
+            arScene.addEventListener('loaded', () => {
+                console.log('AR Scene has loaded');
+                loadingMessage.classList.add('hidden');
+                stopButton.classList.remove('hidden');
+                arSceneActive = true;
+            });
 
-            arSceneActive = true;
+            // Listen for camera permission errors
+            arScene.addEventListener('camera-init', (event) => {
+                if (event.detail.status === 'ERROR') {
+                    showMessage("Error: The camera could not be started. Please check your browser's permissions for this website and try again.", 'alert');
+                    stopARViewer(); // Stop the AR viewer to clean up
+                }
+            });
         }
 
         function stopARViewer() {
-            /* Stop the AR scene and show the start button */
+            // Remove the AR scene to completely stop the camera stream
             const arScene = document.getElementById('arScene');
+            if (arScene) {
+                arScene.parentNode.removeChild(arScene);
+            }
+
+            // Show the start button again
             const startButton = document.getElementById('startAR');
             const stopButton = document.getElementById('stopAR');
-
-            arScene.style.display = 'none'; // Hide the a-scene
-            startButton.style.display = 'block'; // Show the start button
-            stopButton.style.display = 'none'; // Hide the stop button
-
+            
+            startButton.classList.remove('hidden');
+            stopButton.classList.add('hidden');
             arSceneActive = false;
         }
 
@@ -560,3 +612,5 @@
     </script>
 </body>
 </html>
+
+

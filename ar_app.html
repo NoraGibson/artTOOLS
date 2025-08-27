@@ -7,8 +7,8 @@
 
     <!-- A-Frame and AR.js libraries. AR.js is built on top of A-Frame. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.0/aframe.min.js"></script>
-    <!-- We're now using a direct link to the AR.js library to ensure the latest version -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <!-- We are now using the aframe-ar.js which supports custom pattern markers. -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
     <style>
         /* General styling for dark mode */
@@ -132,6 +132,18 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .input-group label {
+            color: #ccc;
+        }
     </style>
 </head>
 <body>
@@ -152,8 +164,15 @@
 
             <!-- Upload new image -->
             <h3>Add New AR Artwork</h3>
+            <p>1. Upload a square image for the marker pattern.</p>
             <input type="file" id="imageUpload" accept="image/*">
+            <p>2. Enter the full Vimeo video URL.</p>
             <input type="url" id="vimeoUrl" placeholder="Vimeo video URL (e.g., https://vimeo.com/123456789)">
+            <p>3. Enter the dimensions of your physical artwork to match the video display.</p>
+            <div class="input-group">
+                <input type="number" id="artworkWidth" placeholder="Width (e.g., 2.0)" step="0.1">
+                <input type="number" id="artworkHeight" placeholder="Height (e.g., 1.5)" step="0.1">
+            </div>
             <button onclick="uploadImage()">Add Artwork</button>
             <div id="uploadStatus"></div>
 
@@ -167,10 +186,10 @@
         <!-- Public AR Viewer Section -->
         <div class="ar-section">
             <h2>AR Viewer</h2>
-            <p>Point your camera at the Hiro marker below to test AR!</p>
+            <p>Point your camera at the HIRO marker to test the AR functionality, or at one of your physical artwork images to see the video!</p>
             <div id="deviceInfo" style="margin: 10px 0; font-size: 14px; color: #ccc;"></div>
 
-            <!-- Test Hiro Marker -->
+            <!-- HIRO Test Marker -->
             <div style="background: white; padding: 20px; margin: 20px auto; width: 200px; text-align: center; border-radius: 8px;">
                 <h4 style="color: black; margin: 10px 0;">HIRO Test Marker</h4>
                 <svg width="160" height="160" viewBox="0 0 160 160" style="border: 2px solid black;">
@@ -206,6 +225,7 @@
         const STORAGE_KEY = "ar_artworks";
         let currentArtworks = [];
         let arSceneActive = false;
+        let arSceneElement = null;
 
         // =================================================================
         // UTILITY FUNCTIONS
@@ -250,28 +270,6 @@
             return match ? match[1] : null;
         }
         
-        function generateARMarker(imageData, file) {
-            return {
-                type: 'pattern',
-                imageHash: generateImageHash(file.name, file.size),
-                fileName: file.name.replace(/\.[^/.]+$/, ""),
-                created: Date.now()
-            };
-        }
-        
-        function generateImageHash(fileName, fileSize) {
-            let hash = 0;
-            const str = fileName + fileSize.toString();
-            
-            for (let i = 0; i < str.length; i++) {
-                const char = str.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = hash & hash;
-            }
-            
-            return Math.abs(hash).toString(16);
-        }
-
         // =================================================================
         // ADMIN FUNCTIONS
         // =================================================================
@@ -294,14 +292,16 @@
         function uploadImage() {
             const fileInput = document.getElementById('imageUpload');
             const vimeoInput = document.getElementById('vimeoUrl');
+            const widthInput = document.getElementById('artworkWidth');
+            const heightInput = document.getElementById('artworkHeight');
             const statusDiv = document.getElementById('uploadStatus');
             
-            if (!fileInput.files[0] || !vimeoInput.value) {
-                showMessage('Please select an image and enter a Vimeo URL');
+            if (!fileInput.files[0] || !vimeoInput.value || !widthInput.value || !heightInput.value) {
+                showMessage('Please select an image, enter a Vimeo URL, and specify artwork dimensions.');
                 return;
             }
             
-            statusDiv.innerHTML = '<div>Processing image and generating AR marker...</div>';
+            statusDiv.innerHTML = '<div>Processing image...</div>';
             
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -312,15 +312,14 @@
                         return;
                     }
                     
-                    const markerData = generateARMarker(e.target.result, fileInput.files[0]);
-                    
                     const newArtwork = {
                         id: Date.now(),
                         imageName: fileInput.files[0].name,
                         imageData: e.target.result,
                         vimeoUrl: vimeoInput.value,
                         vimeoId: vimeoId,
-                        markerData: markerData,
+                        width: parseFloat(widthInput.value),
+                        height: parseFloat(heightInput.value),
                         dateAdded: new Date().toLocaleDateString()
                     };
                     
@@ -329,7 +328,9 @@
                     
                     fileInput.value = '';
                     vimeoInput.value = '';
-                    statusDiv.innerHTML = '<div class="success">Artwork added successfully! Remember to update your GitHub JSON file.</div>';
+                    widthInput.value = '';
+                    heightInput.value = '';
+                    statusDiv.innerHTML = '<div class="success">Artwork added successfully! Now copy the JSON data below and update your GitHub file.</div>';
                     
                     loadImageList();
                     
@@ -371,6 +372,7 @@
                         <div class="image-info">
                             <strong>${artwork.imageName}</strong><br>
                             <strong>Vimeo:</strong> <a href="${artwork.vimeoUrl}" target="_blank">${artwork.vimeoUrl}</a><br>
+                            <strong>Dimensions:</strong> ${artwork.width} x ${artwork.height}<br>
                             <strong>Added:</strong> ${artwork.dateAdded}<br>
                             <button onclick="deleteImage(${artwork.id})" type="button" style="background-color: #d63031; margin-top: 10px;">Delete Artwork</button>
                         </div>
@@ -380,6 +382,7 @@
             });
             
             imageList.innerHTML = html;
+            showGitHubUpdateInstructions(); // Always show instructions after loading list
         }
 
         // =================================================================
@@ -484,51 +487,75 @@
             const arScene = document.createElement('a-scene');
             arScene.setAttribute('id', 'arScene');
             arScene.setAttribute('embedded', '');
-            arScene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; trackingMethod: best;');
+            arScene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false;');
             arScene.setAttribute('vr-mode-ui', 'enabled: false');
             arScene.setAttribute('renderer', 'logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;');
             arScene.setAttribute('style', 'width: 100%; height: 100%;');
 
-            // Add the dynamic markers for each artwork
+            // Set up assets for the videos
+            const assets = document.createElement('a-assets');
             currentArtworks.forEach(artwork => {
-                const marker = document.createElement('a-marker');
-                // Use NFT tracking for custom markers from base64 data
-                marker.setAttribute('type', 'nft');
-                marker.setAttribute('url', 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({
-                    type: 'image',
-                    imageURL: artwork.imageData,
-                    imageHash: artwork.markerData.imageHash
-                })));
-                
-                // Add an image entity as the AR content
-                const image = document.createElement('a-image');
-                image.setAttribute('src', artwork.imageData);
-                image.setAttribute('position', '0 0.5 0');
-                image.setAttribute('scale', '1 1 1');
-                marker.appendChild(image);
-                
-                arScene.appendChild(marker);
+                const video = document.createElement('video');
+                video.setAttribute('id', `vimeo-${artwork.vimeoId}`);
+                video.setAttribute('src', `https://player.vimeo.com/external/${artwork.vimeoId}.mp4?s=d01f801e06c4a8a6142c6762319d67568582d02a&profile_id=174&token=${Date.now()}`);
+                video.setAttribute('crossorigin', 'anonymous');
+                video.setAttribute('playsinline', '');
+                video.setAttribute('preload', 'auto');
+                video.setAttribute('loop', 'true');
+                video.setAttribute('autoplay', 'false'); // Do not autoplay until marker is found
+                assets.appendChild(video);
             });
-            
-            // Add a test marker for the HIRO pattern
+            arScene.appendChild(assets);
+
+            // Add a single HIRO marker for testing
             const hiroMarker = document.createElement('a-marker');
             hiroMarker.setAttribute('preset', 'hiro');
-
-            const box = document.createElement('a-box');
-            box.setAttribute('position', '0 0.5 0');
-            box.setAttribute('material', 'color: red;');
-            box.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 3000;');
-            hiroMarker.appendChild(box);
-            
-            const text = document.createElement('a-text');
-            text.setAttribute('value', 'AR Test');
-            text.setAttribute('position', '0 1 0');
-            text.setAttribute('color', 'white');
-            text.setAttribute('align', 'center');
-            text.setAttribute('scale', '0.5 0.5 0.5');
-            hiroMarker.appendChild(text);
-
+            const testBox = document.createElement('a-box');
+            testBox.setAttribute('position', '0 0.5 0');
+            testBox.setAttribute('material', 'color: red;');
+            testBox.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 3000;');
+            hiroMarker.appendChild(testBox);
             arScene.appendChild(hiroMarker);
+            
+            // Add a separate marker for each artwork
+            currentArtworks.forEach(artwork => {
+                const marker = document.createElement('a-marker');
+                // The URL points to the pattern file you will generate and add to your GitHub repo
+                marker.setAttribute('type', 'pattern');
+                marker.setAttribute('url', `./markers/${artwork.imageName.split('.')[0]}.patt`);
+
+                // Create a video plane attached to this marker
+                const videoPlane = document.createElement('a-video');
+                videoPlane.setAttribute('src', `#vimeo-${artwork.vimeoId}`);
+                videoPlane.setAttribute('width', artwork.width);
+                videoPlane.setAttribute('height', artwork.height);
+                videoPlane.setAttribute('position', '0 0.5 0');
+                videoPlane.setAttribute('rotation', '-90 0 0'); // Orient it to face the camera
+                videoPlane.setAttribute('visible', 'false'); // Start hidden
+
+                // Add event listeners to play/pause the video
+                marker.addEventListener('markerFound', function() {
+                    console.log(`Marker found for: ${artwork.imageName}`);
+                    videoPlane.setAttribute('visible', 'true');
+                    const videoElement = document.getElementById(`vimeo-${artwork.vimeoId}`);
+                    if (videoElement && videoElement.paused) {
+                        videoElement.play();
+                    }
+                });
+
+                marker.addEventListener('markerLost', function() {
+                    console.log(`Marker lost for: ${artwork.imageName}`);
+                    videoPlane.setAttribute('visible', 'false');
+                    const videoElement = document.getElementById(`vimeo-${artwork.vimeoId}`);
+                    if (videoElement && !videoElement.paused) {
+                        videoElement.pause();
+                        videoElement.currentTime = 0; // Rewind to start
+                    }
+                });
+                
+                marker.appendChild(videoPlane);
+                arScene.appendChild(marker);
+            });
 
             // You must always have a camera entity in an A-Frame scene
             const camera = document.createElement('a-entity');
@@ -540,11 +567,6 @@
         }
 
         function startARViewer() {
-            if (currentArtworks.length === 0) {
-                showMessage('No artworks available yet. Please add some in the admin panel.');
-                return;
-            }
-
             const startButton = document.getElementById('startAR');
             const stopButton = document.getElementById('stopAR');
             const loadingMessage = document.getElementById('loadingMessage');
@@ -557,10 +579,10 @@
             // Create and append the new AR scene
             createARScene();
             
-            const arScene = document.getElementById('arScene');
+            arSceneElement = document.getElementById('arScene');
             
             // Listen for the 'loaded' event to hide loading message
-            arScene.addEventListener('loaded', () => {
+            arSceneElement.addEventListener('loaded', () => {
                 console.log('AR Scene has loaded');
                 loadingMessage.classList.add('hidden');
                 stopButton.classList.remove('hidden');
@@ -568,7 +590,7 @@
             });
 
             // Listen for camera permission errors
-            arScene.addEventListener('camera-init', (event) => {
+            arSceneElement.addEventListener('camera-init', (event) => {
                 if (event.detail.status === 'ERROR') {
                     showMessage("Error: The camera could not be started. Please check your browser's permissions for this website and try again.", 'alert');
                     stopARViewer(); // Stop the AR viewer to clean up
@@ -578,9 +600,9 @@
 
         function stopARViewer() {
             // Remove the AR scene to completely stop the camera stream
-            const arScene = document.getElementById('arScene');
-            if (arScene) {
-                arScene.parentNode.removeChild(arScene);
+            if (arSceneElement) {
+                arSceneElement.parentNode.removeChild(arSceneElement);
+                arSceneElement = null; // Clear the reference
             }
 
             // Show the start button again
@@ -633,6 +655,7 @@
     </script>
 </body>
 </html>
+
 
 
 

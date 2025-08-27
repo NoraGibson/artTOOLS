@@ -4,83 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR Art Viewer</title>
-    
-    <!-- AR.js library for marker-based AR -->
+
+    <!-- A-Frame and AR.js libraries. AR.js is built on top of A-Frame. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.0/aframe.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/aframe-ar.min.js"></script>
-    
-    <!-- Alternative: MindAR for better iOS support -->
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
     <style>
-        /* Dark mode styling as requested */
+        /* General styling for dark mode */
         body {
             margin: 0;
             padding: 20px;
             background-color: #1a1a1a;
             color: white;
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             line-height: 1.6;
         }
-        
+
         .container {
             max-width: 800px;
             margin: 0 auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            padding: 20px;
         }
-        
+
         h1, h2 {
             text-align: center;
             margin-bottom: 20px;
+            color: #ffffff;
         }
-        
-        /* Password and admin section styling */
-        .admin-section {
-            background-color: #2d2d2d;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        input, button, select {
-            background-color: #3d3d3d;
-            color: white;
-            border: 1px solid #555;
-            padding: 10px;
-            margin: 5px;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-        
-        button {
-            cursor: pointer;
-            background-color: #4a4a4a;
-        }
-        
-        button:hover {
-            background-color: #5a5a5a;
-        }
-        
-        /* Links styling - white and bold as requested */
-        a {
-            color: white;
-            font-weight: bold;
-            text-decoration: none;
-        }
-        
-        a:hover {
-            text-decoration: underline;
-        }
-        
-        /* AR viewer styling */
+
+        /* Styling for the AR viewer and buttons */
         .ar-section {
             text-align: center;
             margin-top: 30px;
         }
-        
+
         #arContainer {
             width: 100%;
             height: 400px;
@@ -89,61 +48,95 @@
             overflow: hidden;
             position: relative;
         }
-        
-        /* Image list styling */
-        .image-item {
+
+        /* Admin and form element styling */
+        .admin-section {
             background-color: #2d2d2d;
-            padding: 15px;
-            margin: 10px 0;
+            padding: 20px;
             border-radius: 8px;
-            border: 1px solid #555;
-        }
-        
-        .image-preview {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 4px;
-            margin-right: 15px;
-            float: left;
-        }
-        
-        .image-info {
-            margin-left: 120px;
-        }
-        
-        .clear {
-            clear: both;
-        }
-        
-        .error {
-            color: #ff6b6b;
-            margin: 10px 0;
-        }
-        
-        .success {
-            color: #51cf66;
-            margin: 10px 0;
+            margin-bottom: 20px;
         }
 
-        /* Status overlay for AR */
-        .ar-status {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.7);
+        .hidden {
+            display: none;
+        }
+
+        input, button, select {
+            background-color: #3d3d3d;
             color: white;
+            border: 1px solid #555;
             padding: 10px;
-            border-radius: 5px;
-            font-size: 14px;
-            z-index: 1000;
+            margin: 5px;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        button {
+            cursor: pointer;
+            background-color: #4a4a4a;
+        }
+
+        button:hover {
+            background-color: #5a5a5a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Custom Modal Box for Alerts and Confirms */
+        .modal {
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #2d2d2d;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-content p {
+            margin-top: 0;
+            font-size: 1.1em;
+        }
+
+        .modal-content .modal-buttons button {
+            margin: 5px;
+            padding: 10px 20px;
+        }
+
+        .modal-content .modal-buttons #modalYes {
+            background-color: #d63031;
+        }
+
+        .modal-content .modal-buttons #modalYes:hover {
+            background-color: #e55039;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>AR Art Viewer</h1>
-        
+
         <!-- Admin Password Section -->
         <div class="admin-section">
             <h2>Admin Access</h2>
@@ -151,31 +144,31 @@
             <button onclick="checkPassword()">Access Admin Panel</button>
             <div id="passwordError" class="error hidden">Incorrect password</div>
         </div>
-        
+
         <!-- Admin Panel (Hidden by default) -->
         <div id="adminPanel" class="admin-section hidden">
             <h2>Admin Panel</h2>
-            
+
             <!-- Upload new image -->
             <h3>Add New AR Artwork</h3>
             <input type="file" id="imageUpload" accept="image/*">
             <input type="url" id="vimeoUrl" placeholder="Vimeo video URL (e.g., https://vimeo.com/123456789)">
             <button onclick="uploadImage()">Add Artwork</button>
             <div id="uploadStatus"></div>
-            
+
             <!-- List current images -->
             <h3>Current Artworks</h3>
             <div id="imageList">
                 <!-- Images will be populated here -->
             </div>
         </div>
-        
+
         <!-- Public AR Viewer Section -->
         <div class="ar-section">
             <h2>AR Viewer</h2>
             <p>Point your camera at the Hiro marker below to test AR!</p>
             <div id="deviceInfo" style="margin: 10px 0; font-size: 14px; color: #ccc;"></div>
-            
+
             <!-- Test Hiro Marker -->
             <div style="background: white; padding: 20px; margin: 20px auto; width: 200px; text-align: center; border-radius: 8px;">
                 <h4 style="color: black; margin: 10px 0;">HIRO Test Marker</h4>
@@ -183,7 +176,6 @@
                     <rect width="160" height="160" fill="white"/>
                     <rect x="20" y="20" width="120" height="120" fill="black"/>
                     <rect x="40" y="40" width="80" height="80" fill="white"/>
-                    <!-- Simple HIRO-like pattern -->
                     <rect x="60" y="50" width="40" height="10" fill="black"/>
                     <rect x="50" y="70" width="20" height="20" fill="black"/>
                     <rect x="90" y="70" width="20" height="20" fill="black"/>
@@ -191,13 +183,31 @@
                 </svg>
                 <p style="color: black; font-size: 12px; margin: 10px 0;">Point your camera at this pattern</p>
             </div>
-            
+
             <button id="startAR" onclick="startARViewer()">Start AR Camera</button>
-            <button id="testCamera" onclick="testCamera()" style="background: #4CAF50; margin-left: 10px;">Test Camera Only</button>
-            <div id="arContainer" class="hidden">
-                <!-- AR.js scene will be inserted here -->
-            </div>
             <button id="stopAR" onclick="stopARViewer()" class="hidden">Stop AR</button>
+            
+            <div id="arContainer">
+                <!-- The A-Frame scene is now a permanent part of the HTML -->
+                <a-scene
+                    id="arScene"
+                    embedded
+                    arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
+                    vr-mode-ui="enabled: false"
+                    renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;"
+                    style="width: 100%; height: 100%; display: none;">
+
+                    <!-- A-Frame marker for the HIRO pattern. This is a good test. -->
+                    <a-marker preset="hiro">
+                        <a-box position="0 0.5 0" material="color: red;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000;"></a-box>
+                        <a-text value="AR Working!" position="0 1 0" color="white" align="center" scale="0.5 0.5 0.5"></a-text>
+                    </a-marker>
+                    
+                    <!-- You must always have a camera entity in an A-Frame scene -->
+                    <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
+
+                </a-scene>
+            </div>
             
             <div id="debugInfo" style="margin-top: 20px; font-size: 12px; color: #888;"></div>
         </div>
@@ -207,40 +217,57 @@
         // =================================================================
         // GLOBAL VARIABLES
         // =================================================================
-        
-        // Simple password for admin access (change this!)
-        const ADMIN_PASSWORD = "artadmin123";
-        
-        // Storage key for saving data in browser
-        const STORAGE_KEY = "ar_artworks";
-        
-        // Track current AR state
-        let arSceneActive = false;
-        let currentArtworks = [];
 
-        // Device detection
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const ADMIN_PASSWORD = "artadmin123";
+        const STORAGE_KEY = "ar_artworks";
+        let currentArtworks = [];
+        let arSceneActive = false;
 
         // =================================================================
         // UTILITY FUNCTIONS
         // =================================================================
-        
+
+        function showMessage(message, type = 'alert', onConfirm = null) {
+            /* Custom function to show a modal message or confirmation */
+            const existingModal = document.querySelector('.modal');
+            if (existingModal) existingModal.remove();
+
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            let buttonsHtml = `<button id="modalOk">OK</button>`;
+            if (type === 'confirm') {
+                buttonsHtml = `<button id="modalYes">Yes</button><button id="modalNo">No</button>`;
+            }
+
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <p>${message}</p>
+                    <div class="modal-buttons">${buttonsHtml}</div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            if (type === 'confirm') {
+                document.getElementById('modalYes').onclick = () => {
+                    modal.remove();
+                    if (onConfirm) onConfirm(true);
+                };
+                document.getElementById('modalNo').onclick = () => {
+                    modal.remove();
+                    if (onConfirm) onConfirm(false);
+                };
+            } else {
+                document.getElementById('modalOk').onclick = () => modal.remove();
+            }
+        }
+
+        // The rest of your utility functions remain the same
         function extractVimeoId(url) {
-            /* Extract video ID from Vimeo URL */
             const match = url.match(/(?:vimeo\.com\/)(\d+)/);
             return match ? match[1] : null;
         }
         
-        function getVimeoDirectUrl(vimeoId) {
-            /* Get direct video URL for Vimeo (this is a simplified approach) */
-            // Note: For production, you'd need to use Vimeo's oEmbed API
-            // This is a fallback that may not always work
-            return `https://vimeo.com/${vimeoId}`;
-        }
-
         function generateARMarker(imageData, file) {
-            /* Generate AR marker data from uploaded image */
             return {
                 type: 'pattern',
                 imageHash: generateImageHash(file.name, file.size),
@@ -250,7 +277,6 @@
         }
         
         function generateImageHash(fileName, fileSize) {
-            /* Create a simple hash from file info for marker identification */
             let hash = 0;
             const str = fileName + fileSize.toString();
             
@@ -264,11 +290,10 @@
         }
 
         // =================================================================
-        // ADMIN FUNCTIONS
+        // ADMIN FUNCTIONS (updated to use custom modal)
         // =================================================================
-        
+
         function checkPassword() {
-            /* Check if entered password matches admin password */
             const enteredPassword = document.getElementById('adminPassword').value;
             const errorDiv = document.getElementById('passwordError');
             const adminPanel = document.getElementById('adminPanel');
@@ -284,13 +309,12 @@
         }
         
         function uploadImage() {
-            /* Handle uploading new image and vimeo link */
             const fileInput = document.getElementById('imageUpload');
             const vimeoInput = document.getElementById('vimeoUrl');
             const statusDiv = document.getElementById('uploadStatus');
             
             if (!fileInput.files[0] || !vimeoInput.value) {
-                statusDiv.innerHTML = '<div class="error">Please select an image and enter a Vimeo URL</div>';
+                showMessage('Please select an image and enter a Vimeo URL');
                 return;
             }
             
@@ -301,7 +325,7 @@
                 try {
                     const vimeoId = extractVimeoId(vimeoInput.value);
                     if (!vimeoId) {
-                        statusDiv.innerHTML = '<div class="error">Invalid Vimeo URL. Please use format: https://vimeo.com/123456789</div>';
+                        showMessage('Invalid Vimeo URL. Please use format: https://vimeo.com/123456789');
                         return;
                     }
                     
@@ -328,7 +352,7 @@
                     
                 } catch (error) {
                     console.error('Upload error:', error);
-                    statusDiv.innerHTML = '<div class="error">Error processing image: ' + error.message + '</div>';
+                    showMessage('Error processing image: ' + error.message);
                 }
             };
             
@@ -336,39 +360,19 @@
         }
         
         function deleteImage(artworkId) {
-            /* Remove an artwork from the collection */
             const artwork = currentArtworks.find(art => art.id == artworkId);
             const artworkName = artwork ? artwork.imageName : 'Unknown';
             
-            const confirmDiv = document.createElement('div');
-            confirmDiv.style.cssText = `
-                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                background: #2d2d2d; color: white; padding: 20px; border-radius: 8px;
-                border: 2px solid #555; z-index: 10000; text-align: center;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            `;
-            confirmDiv.innerHTML = `
-                <p>Delete "${artworkName}"?</p>
-                <button id="confirmYes" style="background: #d63031; color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer;">Yes, Delete</button>
-                <button id="confirmNo" style="background: #555; color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
-            `;
-            
-            document.body.appendChild(confirmDiv);
-            
-            document.getElementById('confirmYes').onclick = function() {
-                currentArtworks = currentArtworks.filter(artwork => artwork.id != artworkId);
-                saveArtworks();
-                loadImageList();
-                document.body.removeChild(confirmDiv);
-            };
-            
-            document.getElementById('confirmNo').onclick = function() {
-                document.body.removeChild(confirmDiv);
-            };
+            showMessage(`Delete "${artworkName}"?`, 'confirm', (confirmed) => {
+                if (confirmed) {
+                    currentArtworks = currentArtworks.filter(artwork => artwork.id != artworkId);
+                    saveArtworks();
+                    loadImageList();
+                }
+            });
         }
         
         function loadImageList() {
-            /* Display all current artworks in admin panel */
             const imageList = document.getElementById('imageList');
             
             if (currentArtworks.length === 0) {
@@ -400,7 +404,6 @@
         // =================================================================
         
         async function saveArtworks() {
-            /* Save artworks to localStorage and show GitHub instructions */
             localStorage.setItem(STORAGE_KEY, JSON.stringify(currentArtworks));
             
             if (currentArtworks.length > 0) {
@@ -409,7 +412,6 @@
         }
         
         async function loadArtworks() {
-            /* Load artworks from GitHub JSON file first, then fallback to localStorage */
             try {
                 const response = await fetch('./artworks.json?t=' + Date.now());
                 if (response.ok) {
@@ -430,7 +432,6 @@
         }
         
         function showGitHubUpdateInstructions() {
-            /* Show instructions for updating the shared JSON file */
             const instructions = document.getElementById('githubInstructions') || createInstructionsDiv();
             
             const jsonData = JSON.stringify(currentArtworks, null, 2);
@@ -462,33 +463,20 @@
         }
         
         function copyToClipboard(text) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(() => {
-                    alert('JSON data copied to clipboard!');
-                }).catch(err => {
-                    console.error('Clipboard copy failed:', err);
-                    fallbackCopy(text);
-                });
-            } else {
-                fallbackCopy(text);
-            }
-        }
-
-        function fallbackCopy(text) {
             const textArea = document.createElement('textarea');
             textArea.value = text;
             document.body.appendChild(textArea);
             textArea.select();
             try {
                 document.execCommand('copy');
-                alert('JSON data copied to clipboard!');
+                showMessage('JSON data copied to clipboard!');
             } catch (err) {
-                console.error('Fallback copy failed:', err);
-                prompt('Copy this JSON data manually:', text);
+                console.error('Copy failed:', err);
+                showMessage('Could not copy automatically. Please copy the text from the box manually.');
             }
             document.body.removeChild(textArea);
         }
-        
+
         function hideGitHubInstructions() {
             const instructions = document.getElementById('githubInstructions');
             if (instructions) {
@@ -499,468 +487,69 @@
         // =================================================================
         // AR VIEWER FUNCTIONS
         // =================================================================
-        
+
+        function startARViewer() {
+            /* Show the AR scene and the stop button */
+            if (currentArtworks.length === 0) {
+                showMessage('No artworks available yet. Please add some in the admin panel.');
+                return;
+            }
+
+            const arScene = document.getElementById('arScene');
+            const startButton = document.getElementById('startAR');
+            const stopButton = document.getElementById('stopAR');
+
+            arScene.style.display = 'block'; // Show the a-scene
+            startButton.style.display = 'none'; // Hide the start button
+            stopButton.style.display = 'block'; // Show the stop button
+
+            arSceneActive = true;
+        }
+
+        function stopARViewer() {
+            /* Stop the AR scene and show the start button */
+            const arScene = document.getElementById('arScene');
+            const startButton = document.getElementById('startAR');
+            const stopButton = document.getElementById('stopAR');
+
+            arScene.style.display = 'none'; // Hide the a-scene
+            startButton.style.display = 'block'; // Show the start button
+            stopButton.style.display = 'none'; // Hide the stop button
+
+            arSceneActive = false;
+        }
+
         function showDeviceInfo() {
             /* Display device information for debugging */
             const deviceInfo = document.getElementById('deviceInfo');
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
             deviceInfo.innerHTML = `
                 Device: ${isMobile ? 'Mobile' : 'Desktop'} | 
                 iOS: ${isIOS ? 'Yes' : 'No'} | 
                 User Agent: ${navigator.userAgent.substring(0, 50)}...
             `;
         }
-
-        function startARViewer() {
-            /* Initialize the AR camera and marker detection */
-            if (currentArtworks.length === 0) {
-                alert('No artworks available yet. Please add some artworks in the admin panel first.');
-                return;
-            }
-            
-            const arContainer = document.getElementById('arContainer');
-            const startButton = document.getElementById('startAR');
-            const stopButton = document.getElementById('stopAR');
-            
-            arContainer.classList.remove('hidden');
-            startButton.classList.add('hidden');
-            stopButton.classList.remove('hidden');
-            
-            arContainer.innerHTML = `
-                <div class="ar-status">Initializing camera...</div>
-                <p style="color: white; text-align: center; padding: 20px;">Loading AR camera...</p>
-            `;
-            
-            // Check camera support
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                arContainer.innerHTML = `
-                    <div class="ar-status">Error: Camera not supported</div>
-                    <p style="color: red; text-align: center; padding: 20px;">Camera not supported on this device</p>
-                `;
-                return;
-            }
-            
-            // Request camera permissions
-            navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: 'environment',  // Use rear camera
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                } 
-            })
-                .then(function(stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                    console.log('Camera permission granted');
-                    
-                    // Update status
-                    const statusDiv = arContainer.querySelector('.ar-status');
-                    if (statusDiv) {
-                        statusDiv.textContent = 'Camera ready, loading AR...';
-                    }
-                    
-                    setTimeout(() => {
-                        createARScene();
-                    }, 500);
-                })
-                .catch(function(error) {
-                    console.error('Camera permission error:', error);
-                    arContainer.innerHTML = `
-                        <div class="ar-status">Error: Camera permission denied</div>
-                        <p style="color: red; text-align: center; padding: 20px;">
-                            Camera permission denied. Please allow camera access and try again.<br>
-                            Error: ${error.message}
-                        </p>
-                    `;
-                });
-            
-            arSceneActive = true;
-        }
         
-        function createARScene() {
-            /* Create AR scene with iOS Chrome compatibility - try multiple approaches */
-            const arContainer = document.getElementById('arContainer');
-            
-            console.log('Creating AR scene for device:', isIOS ? 'iOS' : 'Other');
-            
-            if (isIOS) {
-                // For iOS Chrome, try a completely different approach
-                tryiOSCompatibleAR(arContainer);
-            } else {
-                // Desktop/Android version
-                createStandardARScene(arContainer);
-            }
-        }
-
-        function tryiOSCompatibleAR(container) {
-            /* Try iOS-compatible AR approaches */
-            updateARStatus('Trying iOS-compatible AR...');
-            
-            // Method 1: Try with minimal AR.js settings
-            container.innerHTML = `
-                <div class="ar-status">Trying Method 1: Minimal AR.js...</div>
-                <a-scene
-                    embedded
-                    arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: mono; cameraParametersUrl: https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/data/camera_para.dat;"
-                    vr-mode-ui="enabled: false"
-                    style="width: 100%; height: 400px;">
-                    
-                    <a-marker preset="hiro">
-                        <a-box position="0 0.5 0" material="color: red;" scale="0.3 0.3 0.3"></a-box>
-                    </a-marker>
-                    
-                    <a-entity camera></a-entity>
-                </a-scene>
-            `;
-            
-            // Check if this works after 3 seconds
-            setTimeout(() => {
-                const scene = container.querySelector('a-scene');
-                const video = scene ? scene.querySelector('video') : null;
-                
-                if (video && video.srcObject && video.videoWidth > 0) {
-                    updateARStatus('Method 1 working - Point at Hiro marker');
-                    setupAREventListeners();
-                } else {
-                    console.log('Method 1 failed, trying Method 2');
-                    tryMethod2(container);
-                }
-            }, 3000);
-        }
-
-        function tryMethod2(container) {
-            /* Try alternative AR approach for iOS */
-            updateARStatus('Trying Method 2: Basic camera with manual detection...');
-            
-            container.innerHTML = `
-                <div class="ar-status">Method 2: Camera + Manual Detection</div>
-                <video id="arVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; text-align: center;">
-                    <div>📱 Camera Active</div>
-                    <div style="font-size: 12px; margin-top: 5px;">Point at Hiro marker - we'll add AR detection in next update</div>
-                </div>
-            `;
-            
-            const video = container.querySelector('#arVideo');
-            
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }
-            })
-            .then(stream => {
-                video.srcObject = stream;
-                updateARStatus('Camera working - AR detection coming next!');
-                
-                // Store stream for cleanup
-                video.setAttribute('data-stream-active', 'true');
-                
-                // Add some basic overlay graphics to simulate AR
-                setTimeout(() => {
-                    addSimulatedAR(container);
-                }, 2000);
-            })
-            .catch(error => {
-                console.error('Method 2 also failed:', error);
-                updateARStatus('Both methods failed - iOS Chrome AR issue');
-                showAlternativeSolutions(container);
-            });
-        }
-
-        function addSimulatedAR(container) {
-            /* Add simulated AR overlay to test the concept */
-            const overlay = document.createElement('div');
-            overlay.style.cssText = `
-                position: absolute; 
-                top: 20px; 
-                right: 20px; 
-                width: 100px; 
-                height: 100px; 
-                background: linear-gradient(45deg, red, orange);
-                border: 2px solid white;
-                border-radius: 50%;
-                animation: spin 3s linear infinite;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-weight: bold;
-                font-size: 12px;
-                text-align: center;
-            `;
-            overlay.innerHTML = 'AR<br>Test';
-            
-            // Add CSS animation
-            if (!document.querySelector('#ar-spin-style')) {
-                const style = document.createElement('style');
-                style.id = 'ar-spin-style';
-                style.textContent = `
-                    @keyframes spin {
-                        from { transform: rotate(0deg); }
-                        to { transform: rotate(360deg); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-            
-            container.style.position = 'relative';
-            container.appendChild(overlay);
-            
-            updateARStatus('Simulated AR active - Real AR detection next!');
-        }
-
-        function showAlternativeSolutions(container) {
-            /* Show alternative solutions for iOS Chrome */
-            container.innerHTML = `
-                <div class="ar-status">iOS Chrome AR Solutions</div>
-                <div style="padding: 20px; color: white; text-align: center;">
-                    <h4>AR not working in iOS Chrome</h4>
-                    <p>This is a known issue. Try these solutions:</p>
-                    <div style="text-align: left; max-width: 300px; margin: 0 auto;">
-                        <p>✅ <strong>Camera works</strong> (confirmed)</p>
-                        <p>❌ <strong>AR.js</strong> has iOS Chrome issues</p>
-                        <p><strong>Solutions:</strong></p>
-                        <ul>
-                            <li>Try Safari browser instead</li>
-                            <li>Use "Add to Home Screen" in Chrome</li>
-                            <li>We can implement a simpler AR solution</li>
-                        </ul>
-                    </div>
-                    <button onclick="tryWebXRAR()" style="margin-top: 15px; background: #4CAF50;">Try WebXR AR</button>
-                </div>
-            `;
-        }
-
-        function createStandardARScene(container) {
-            /* Standard AR scene for desktop/Android */
-            container.innerHTML = `
-                <div class="ar-status">AR Scene Active - Point at Hiro marker</div>
-                <a-scene
-                    embedded
-                    arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
-                    vr-mode-ui="enabled: false"
-                    renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;"
-                    style="width: 100%; height: 400px;">
-                    
-                    <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance=".01" smoothThreshold="5">
-                        <a-box position="0 0.5 0" material="color: red;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000;"></a-box>
-                        <a-text value="AR Working! Point at Hiro marker" position="0 1 0" color="white" align="center" scale="0.5 0.5 0.5"></a-text>
-                    </a-marker>
-                    
-                    <a-text 
-                        value="Point camera at Hiro marker pattern to test AR"
-                        position="0 -1.5 -3"
-                        color="white"
-                        align="center"
-                        scale="0.8 0.8 0.8">
-                    </a-text>
-                    
-                    <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
-                </a-scene>
-            `;
-            
-            setupAREventListeners();
-        }
-
-        function setupAREventListeners() {
-            /* Set up AR event listeners */
-            setTimeout(() => {
-                const scene = document.querySelector('a-scene');
-                if (scene) {
-                    scene.addEventListener('camera-init', function() {
-                        console.log('Camera initialized successfully');
-                        updateARStatus('Camera active - Point at Hiro marker');
-                    });
-                    
-                    scene.addEventListener('camera-error', function(event) {
-                        console.error('Camera error:', event);
-                        updateARStatus('Camera Error - Try refreshing');
-                    });
-                    
-                    scene.addEventListener('renderstart', function() {
-                        console.log('AR rendering started');
-                        updateARStatus('AR Active - Point at Hiro marker');
-                    });
-                }
-            }, 1000);
-        }
-
-        async function tryWebXRAR() {
-            /* Try WebXR AR as fallback for iOS */
-            const container = document.getElementById('arContainer');
-            
-            if (!navigator.xr) {
-                container.innerHTML = `
-                    <div style="padding: 20px; color: white; text-align: center;">
-                        <p>WebXR not supported on this device.</p>
-                        <p>For now, we'll implement a camera-based solution that works on iOS Chrome.</p>
-                        <button onclick="implementCameraBasedAR()" style="background: #2196F3;">Try Camera-Based AR</button>
-                    </div>
-                `;
-                return;
-            }
-            
-            try {
-                const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
-                if (isARSupported) {
-                    updateARStatus('WebXR AR supported - but needs HTTPS');
-                    // WebXR implementation would go here
-                } else {
-                    implementCameraBasedAR();
-                }
-            } catch (error) {
-                implementCameraBasedAR();
-            }
-        }
-
-        function implementCameraBasedAR() {
-            /* Implement a simple camera-based AR solution that works on iOS */
-            const container = document.getElementById('arContainer');
-            
-            container.innerHTML = `
-                <div class="ar-status">Camera-Based AR Loading...</div>
-                <video id="arVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;"></video>
-            `;
-            
-            const video = container.querySelector('#arVideo');
-            
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }
-            })
-            .then(stream => {
-                video.srcObject = stream;
-                updateARStatus('✅ Camera AR Ready - Point at artwork!');
-                
-                // Add instructions overlay
-                const instructions = document.createElement('div');
-                instructions.style.cssText = `
-                    position: absolute;
-                    bottom: 20px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: rgba(0,0,0,0.8);
-                    color: white;
-                    padding: 10px 20px;
-                    border-radius: 20px;
-                    font-size: 14px;
-                    text-align: center;
-                `;
-                instructions.innerHTML = '📱 Camera ready! We can add marker detection next.';
-                
-                container.style.position = 'relative';
-                container.appendChild(instructions);
-                
-            })
-            .catch(error => {
-                console.error('Camera-based AR failed:', error);
-                updateARStatus('Error: ' + error.message);
-            });
-        }
-        
-        function testCamera() {
-            /* Test camera access without AR.js to isolate issues */
-            const arContainer = document.getElementById('arContainer');
-            const debugInfo = document.getElementById('debugInfo');
-            
-            arContainer.classList.remove('hidden');
-            arContainer.innerHTML = `
-                <div class="ar-status">Testing camera access...</div>
-                <video id="testVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
-            `;
-            
-            const video = document.getElementById('testVideo');
-            
-            // Try different camera constraints for iOS
-            const constraints = isIOS ? {
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 640, max: 1280 },
-                    height: { ideal: 480, max: 720 }
-                }
-            } : {
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            };
-            
-            navigator.mediaDevices.getUserMedia(constraints)
-                .then(function(stream) {
-                    console.log('Camera test - Stream obtained:', stream);
-                    video.srcObject = stream;
-                    
-                    const statusDiv = arContainer.querySelector('.ar-status');
-                    statusDiv.textContent = 'Camera test successful! You should see camera feed.';
-                    
-                    debugInfo.innerHTML = `
-                        <strong>Camera Test Results:</strong><br>
-                        ✅ Camera permission: Granted<br>
-                        ✅ Stream active: Yes<br>
-                        📹 Video tracks: ${stream.getVideoTracks().length}<br>
-                        📱 Track settings: ${JSON.stringify(stream.getVideoTracks()[0]?.getSettings() || {}, null, 2)}<br>
-                        <button onclick="stopCameraTest()" style="margin-top: 10px; background: #f44336;">Stop Camera Test</button>
-                    `;
-                })
-                .catch(function(error) {
-                    console.error('Camera test failed:', error);
-                    const statusDiv = arContainer.querySelector('.ar-status');
-                    statusDiv.textContent = 'Camera test failed!';
-                    
-                    debugInfo.innerHTML = `
-                        <strong>Camera Test Results:</strong><br>
-                        ❌ Camera permission: Denied or Error<br>
-                        📱 Error: ${error.name} - ${error.message}<br>
-                        💡 Try: Allow camera permission and refresh page
-                    `;
-                });
-        }
-        
-        function stopCameraTest() {
-            /* Stop the camera test */
-            const video = document.getElementById('testVideo');
-            if (video && video.srcObject) {
-                video.srcObject.getTracks().forEach(track => track.stop());
-            }
-            
-            const arContainer = document.getElementById('arContainer');
-            arContainer.classList.add('hidden');
-            arContainer.innerHTML = '';
-            
-            document.getElementById('debugInfo').innerHTML = '';
-        }
-
         // =================================================================
         // INITIALIZATION
         // =================================================================
-        
+
         function initializeApp() {
             console.log("Initializing AR Art Viewer...");
-            
-            // Show device info for debugging
             showDeviceInfo();
-            
-            // Load any existing artworks from storage
             loadArtworks().then(() => {
                 console.log(`Loaded ${currentArtworks.length} artworks from storage`);
             });
         }
         
-        // Run initialization when page loads
         window.addEventListener('load', initializeApp);
         
-        // Add ESC key handler to close admin panel
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 const adminPanel = document.getElementById('adminPanel');
                 if (!adminPanel.classList.contains('hidden')) {
                     const errorDiv = document.getElementById('passwordError');
-                    const adminPanel = document.getElementById('adminPanel');
-                    
                     adminPanel.classList.add('hidden');
                     errorDiv.classList.add('hidden');
                     document.getElementById('adminPassword').value = '';

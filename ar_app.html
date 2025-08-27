@@ -462,9 +462,18 @@
         
         function copyToClipboard(text) {
             /* Copy JSON data to clipboard */
-            navigator.clipboard.writeText(text).then(() => {
-                alert('JSON data copied to clipboard!');
-            });
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('JSON data copied to clipboard!');
+                }).catch(err => {
+                    console.error('Clipboard copy failed:', err);
+                    // Fallback: show the text in a prompt for manual copying
+                    prompt('Copy this JSON data manually:', text);
+                });
+            } else {
+                // Fallback for browsers without clipboard API
+                prompt('Copy this JSON data manually:', text);
+            }
         }
         
         function hideGitHubInstructions() {
@@ -495,8 +504,29 @@
             startButton.classList.add('hidden');
             stopButton.classList.remove('hidden');
             
-            // Create AR scene with dynamic markers
-            createARScene();
+            // Show loading message
+            arContainer.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">Loading AR camera...</p>';
+            
+            // Check for camera permissions and AR support
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                arContainer.innerHTML = '<p style="color: red; text-align: center; padding: 20px;">Camera not supported on this device</p>';
+                return;
+            }
+            
+            // Request camera permissions first
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    // Camera permission granted, stop the test stream
+                    stream.getTracks().forEach(track => track.stop());
+                    console.log('Camera permission granted');
+                    
+                    // Create AR scene
+                    createARScene();
+                })
+                .catch(function(error) {
+                    console.error('Camera permission denied:', error);
+                    arContainer.innerHTML = '<p style="color: red; text-align: center; padding: 20px;">Camera permission denied. Please allow camera access and try again.</p>';
+                });
             
             arSceneActive = true;
         }

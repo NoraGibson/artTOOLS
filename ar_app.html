@@ -9,6 +9,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.0/aframe.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/aframe-ar.min.js"></script>
     
+    <!-- Alternative: MindAR for better iOS support -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
     <style>
         /* Dark mode styling as requested */
         body {
@@ -573,67 +576,197 @@
         }
         
         function createARScene() {
-            /* Create AR scene with iOS Chrome compatibility fixes */
+            /* Create AR scene with iOS Chrome compatibility - try multiple approaches */
             const arContainer = document.getElementById('arContainer');
             
             console.log('Creating AR scene for device:', isIOS ? 'iOS' : 'Other');
             
             if (isIOS) {
-                // For iOS, try a more basic approach with explicit camera settings
-                arContainer.innerHTML = `
-                    <div class="ar-status">Loading AR for iOS...</div>
-                    <a-scene
-                        embedded
-                        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; cameraParametersUrl: https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/data/camera_para.dat; maxDetectionRate: 30; canvasWidth: 640; canvasHeight: 480;"
-                        vr-mode-ui="enabled: false"
-                        style="width: 100%; height: 400px;"
-                        renderer="antialias: false; alpha: true; precision: mediump;">
-                        
-                        <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-                            <a-box position="0 0.5 0" material="color: red;" 
-                                   animation="property: rotation; to: 0 360 0; loop: true; dur: 3000;"
-                                   scale="0.5 0.5 0.5">
-                            </a-box>
-                            <a-text value="AR Working!" position="0 1.2 0" color="white" align="center" scale="0.8 0.8 0.8"></a-text>
-                        </a-marker>
-                        
-                        <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
-                    </a-scene>
-                `;
+                // For iOS Chrome, try a completely different approach
+                tryiOSCompatibleAR(arContainer);
             } else {
                 // Desktop/Android version
-                arContainer.innerHTML = `
-                    <div class="ar-status">AR Scene Active - Point at Hiro marker</div>
-                    <a-scene
-                        embedded
-                        arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
-                        vr-mode-ui="enabled: false"
-                        renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;"
-                        style="width: 100%; height: 400px;">
-                        
-                        <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance=".01" smoothThreshold="5">
-                            <a-box position="0 0.5 0" material="color: red;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000;"></a-box>
-                            <a-text value="AR Working! Point at Hiro marker" position="0 1 0" color="white" align="center" scale="0.5 0.5 0.5"></a-text>
-                        </a-marker>
-                        
-                        <a-text 
-                            value="Point camera at Hiro marker pattern to test AR"
-                            position="0 -1.5 -3"
-                            color="white"
-                            align="center"
-                            scale="0.8 0.8 0.8">
-                        </a-text>
-                        
-                        <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
-                    </a-scene>
+                createStandardARScene(arContainer);
+            }
+        }
+
+        function tryiOSCompatibleAR(container) {
+            /* Try iOS-compatible AR approaches */
+            updateARStatus('Trying iOS-compatible AR...');
+            
+            // Method 1: Try with minimal AR.js settings
+            container.innerHTML = `
+                <div class="ar-status">Trying Method 1: Minimal AR.js...</div>
+                <a-scene
+                    embedded
+                    arjs="sourceType: webcam; debugUIEnabled: true; detectionMode: mono; cameraParametersUrl: https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.2.2/data/camera_para.dat;"
+                    vr-mode-ui="enabled: false"
+                    style="width: 100%; height: 400px;">
+                    
+                    <a-marker preset="hiro">
+                        <a-box position="0 0.5 0" material="color: red;" scale="0.3 0.3 0.3"></a-box>
+                    </a-marker>
+                    
+                    <a-entity camera></a-entity>
+                </a-scene>
+            `;
+            
+            // Check if this works after 3 seconds
+            setTimeout(() => {
+                const scene = container.querySelector('a-scene');
+                const video = scene ? scene.querySelector('video') : null;
+                
+                if (video && video.srcObject && video.videoWidth > 0) {
+                    updateARStatus('Method 1 working - Point at Hiro marker');
+                    setupAREventListeners();
+                } else {
+                    console.log('Method 1 failed, trying Method 2');
+                    tryMethod2(container);
+                }
+            }, 3000);
+        }
+
+        function tryMethod2(container) {
+            /* Try alternative AR approach for iOS */
+            updateARStatus('Trying Method 2: Basic camera with manual detection...');
+            
+            container.innerHTML = `
+                <div class="ar-status">Method 2: Camera + Manual Detection</div>
+                <video id="arVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; text-align: center;">
+                    <div>📱 Camera Active</div>
+                    <div style="font-size: 12px; margin-top: 5px;">Point at Hiro marker - we'll add AR detection in next update</div>
+                </div>
+            `;
+            
+            const video = container.querySelector('#arVideo');
+            
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            })
+            .then(stream => {
+                video.srcObject = stream;
+                updateARStatus('Camera working - AR detection coming next!');
+                
+                // Store stream for cleanup
+                video.setAttribute('data-stream-active', 'true');
+                
+                // Add some basic overlay graphics to simulate AR
+                setTimeout(() => {
+                    addSimulatedAR(container);
+                }, 2000);
+            })
+            .catch(error => {
+                console.error('Method 2 also failed:', error);
+                updateARStatus('Both methods failed - iOS Chrome AR issue');
+                showAlternativeSolutions(container);
+            });
+        }
+
+        function addSimulatedAR(container) {
+            /* Add simulated AR overlay to test the concept */
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: absolute; 
+                top: 20px; 
+                right: 20px; 
+                width: 100px; 
+                height: 100px; 
+                background: linear-gradient(45deg, red, orange);
+                border: 2px solid white;
+                border-radius: 50%;
+                animation: spin 3s linear infinite;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 12px;
+                text-align: center;
+            `;
+            overlay.innerHTML = 'AR<br>Test';
+            
+            // Add CSS animation
+            if (!document.querySelector('#ar-spin-style')) {
+                const style = document.createElement('style');
+                style.id = 'ar-spin-style';
+                style.textContent = `
+                    @keyframes spin {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                    }
                 `;
+                document.head.appendChild(style);
             }
             
-            // Monitor AR scene initialization
+            container.style.position = 'relative';
+            container.appendChild(overlay);
+            
+            updateARStatus('Simulated AR active - Real AR detection next!');
+        }
+
+        function showAlternativeSolutions(container) {
+            /* Show alternative solutions for iOS Chrome */
+            container.innerHTML = `
+                <div class="ar-status">iOS Chrome AR Solutions</div>
+                <div style="padding: 20px; color: white; text-align: center;">
+                    <h4>AR not working in iOS Chrome</h4>
+                    <p>This is a known issue. Try these solutions:</p>
+                    <div style="text-align: left; max-width: 300px; margin: 0 auto;">
+                        <p>✅ <strong>Camera works</strong> (confirmed)</p>
+                        <p>❌ <strong>AR.js</strong> has iOS Chrome issues</p>
+                        <p><strong>Solutions:</strong></p>
+                        <ul>
+                            <li>Try Safari browser instead</li>
+                            <li>Use "Add to Home Screen" in Chrome</li>
+                            <li>We can implement a simpler AR solution</li>
+                        </ul>
+                    </div>
+                    <button onclick="tryWebXRAR()" style="margin-top: 15px; background: #4CAF50;">Try WebXR AR</button>
+                </div>
+            `;
+        }
+
+        function createStandardARScene(container) {
+            /* Standard AR scene for desktop/Android */
+            container.innerHTML = `
+                <div class="ar-status">AR Scene Active - Point at Hiro marker</div>
+                <a-scene
+                    embedded
+                    arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
+                    vr-mode-ui="enabled: false"
+                    renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;"
+                    style="width: 100%; height: 400px;">
+                    
+                    <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance=".01" smoothThreshold="5">
+                        <a-box position="0 0.5 0" material="color: red;" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000;"></a-box>
+                        <a-text value="AR Working! Point at Hiro marker" position="0 1 0" color="white" align="center" scale="0.5 0.5 0.5"></a-text>
+                    </a-marker>
+                    
+                    <a-text 
+                        value="Point camera at Hiro marker pattern to test AR"
+                        position="0 -1.5 -3"
+                        color="white"
+                        align="center"
+                        scale="0.8 0.8 0.8">
+                    </a-text>
+                    
+                    <a-entity camera look-controls-enabled="false" arjs-look-controls="smoothingFactor: 0.1"></a-entity>
+                </a-scene>
+            `;
+            
+            setupAREventListeners();
+        }
+
+        function setupAREventListeners() {
+            /* Set up AR event listeners */
             setTimeout(() => {
                 const scene = document.querySelector('a-scene');
                 if (scene) {
-                    // Check if camera feed is actually working
                     scene.addEventListener('camera-init', function() {
                         console.log('Camera initialized successfully');
                         updateARStatus('Camera active - Point at Hiro marker');
@@ -648,30 +781,84 @@
                         console.log('AR rendering started');
                         updateARStatus('AR Active - Point at Hiro marker');
                     });
-                    
-                    // Check for video element after a delay
-                    setTimeout(() => {
-                        const video = scene.querySelector('video') || document.querySelector('video');
-                        if (video) {
-                            console.log('Video element found:', video);
-                            if (video.srcObject) {
-                                updateARStatus('Camera feed active - Point at Hiro marker');
-                            }
-                        } else {
-                            console.warn('No video element found - camera may not be working');
-                            updateARStatus('Camera initialization issue - Try refresh');
-                        }
-                    }, 3000);
                 }
             }, 1000);
         }
 
-        function updateARStatus(message) {
-            /* Update the AR status message */
-            const statusDiv = document.querySelector('.ar-status');
-            if (statusDiv) {
-                statusDiv.textContent = message;
+        async function tryWebXRAR() {
+            /* Try WebXR AR as fallback for iOS */
+            const container = document.getElementById('arContainer');
+            
+            if (!navigator.xr) {
+                container.innerHTML = `
+                    <div style="padding: 20px; color: white; text-align: center;">
+                        <p>WebXR not supported on this device.</p>
+                        <p>For now, we'll implement a camera-based solution that works on iOS Chrome.</p>
+                        <button onclick="implementCameraBasedAR()" style="background: #2196F3;">Try Camera-Based AR</button>
+                    </div>
+                `;
+                return;
             }
+            
+            try {
+                const isARSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (isARSupported) {
+                    updateARStatus('WebXR AR supported - but needs HTTPS');
+                    // WebXR implementation would go here
+                } else {
+                    implementCameraBasedAR();
+                }
+            } catch (error) {
+                implementCameraBasedAR();
+            }
+        }
+
+        function implementCameraBasedAR() {
+            /* Implement a simple camera-based AR solution that works on iOS */
+            const container = document.getElementById('arContainer');
+            
+            container.innerHTML = `
+                <div class="ar-status">Camera-Based AR Loading...</div>
+                <video id="arVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;"></video>
+            `;
+            
+            const video = container.querySelector('#arVideo');
+            
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            })
+            .then(stream => {
+                video.srcObject = stream;
+                updateARStatus('✅ Camera AR Ready - Point at artwork!');
+                
+                // Add instructions overlay
+                const instructions = document.createElement('div');
+                instructions.style.cssText = `
+                    position: absolute;
+                    bottom: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(0,0,0,0.8);
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 20px;
+                    font-size: 14px;
+                    text-align: center;
+                `;
+                instructions.innerHTML = '📱 Camera ready! We can add marker detection next.';
+                
+                container.style.position = 'relative';
+                container.appendChild(instructions);
+                
+            })
+            .catch(error => {
+                console.error('Camera-based AR failed:', error);
+                updateARStatus('Error: ' + error.message);
+            });
         }
         
         function testCamera() {

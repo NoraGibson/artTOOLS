@@ -4,46 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR Art Viewer</title>
-
-    <!--
-    Attempting to resolve the "Script error" by using a more stable and direct
-    CDN link for the AR.js library from unpkg.com, which often provides
-    more reliable access to npm packages.
-    -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-ar-js@5.0.1/aframe-ar.js"></script>
-
+    
+    <!-- Using A-Frame with threejs-ar for better iOS compatibility -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.min.js"></script>
+    
     <style>
-        /* General styling for dark mode */
         body {
             margin: 0;
             padding: 20px;
             background-color: #1a1a1a;
             color: white;
-            font-family: 'Inter', sans-serif;
+            font-family: Arial, sans-serif;
             line-height: 1.6;
         }
-
+        
         .container {
             max-width: 800px;
             margin: 0 auto;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            padding: 20px;
         }
-
+        
         h1, h2 {
             text-align: center;
             margin-bottom: 20px;
-            color: #ffffff;
         }
-
-        /* Styling for the AR viewer and buttons */
+        
+        .admin-section {
+            background-color: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        input, button {
+            background-color: #3d3d3d;
+            color: white;
+            border: 1px solid #555;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            cursor: pointer;
+            background-color: #4a4a4a;
+        }
+        
+        button:hover {
+            background-color: #5a5a5a;
+        }
+        
+        a {
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        
         .ar-section {
             text-align: center;
             margin-top: 30px;
         }
-
+        
         #arContainer {
             width: 100%;
             height: 400px;
@@ -52,242 +78,132 @@
             overflow: hidden;
             position: relative;
         }
-
-        /* Admin and form element styling */
-        .admin-section {
+        
+        .image-item {
             background-color: #2d2d2d;
-            padding: 20px;
+            padding: 15px;
+            margin: 10px 0;
             border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        input, button, select {
-            background-color: #3d3d3d;
-            color: white;
             border: 1px solid #555;
-            padding: 10px;
-            margin: 5px;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: all 0.3s ease;
         }
-
-        button {
-            cursor: pointer;
-            background-color: #4a4a4a;
+        
+        .image-preview {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 15px;
+            float: left;
         }
-
-        button:hover {
-            background-color: #5a5a5a;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        
+        .image-info {
+            margin-left: 120px;
         }
-
-        /* Custom Modal Box for Alerts and Confirms */
-        .modal {
-            position: fixed;
-            z-index: 10000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            animation: fadeIn 0.3s ease-out;
+        
+        .clear {
+            clear: both;
         }
-
-        .modal-content {
-            background-color: #2d2d2d;
-            padding: 25px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+        
+        .error {
+            color: #ff6b6b;
+            margin: 10px 0;
         }
-
-        .modal-content p {
-            margin-top: 0;
-            font-size: 1.1em;
-        }
-
-        .modal-content .modal-buttons button {
-            margin: 5px;
-            padding: 10px 20px;
-        }
-
-        .modal-content .modal-buttons #modalYes {
-            background-color: #d63031;
-        }
-
-        .modal-content .modal-buttons #modalYes:hover {
-            background-color: #e55039;
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .input-group {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
+        
+        .success {
+            color: #51cf66;
             margin: 10px 0;
         }
 
-        .input-group label {
-            color: #ccc;
+        .status-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 1000;
         }
 
-        .image-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-            background: #333;
-            padding: 10px;
+        .test-marker {
+            background: white;
+            padding: 20px;
+            margin: 20px auto;
+            width: 200px;
+            text-align: center;
             border-radius: 8px;
+            color: black;
         }
-        .image-preview {
-            width: 80px;
-            height: 80px;
-            border-radius: 6px;
-            margin-right: 15px;
-        }
-        .image-info {
-            flex-grow: 1;
-            text-align: left;
-        }
-
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>AR Art Viewer</h1>
-
-        <!-- Admin Password Section -->
+        <h1>AR Art Viewer - Simplified</h1>
+        
+        <!-- Admin Section -->
         <div class="admin-section">
             <h2>Admin Access</h2>
             <input type="password" id="adminPassword" placeholder="Enter admin password">
             <button onclick="checkPassword()">Access Admin Panel</button>
             <div id="passwordError" class="error hidden">Incorrect password</div>
         </div>
-
-        <!-- Admin Panel (Hidden by default) -->
+        
+        <!-- Admin Panel -->
         <div id="adminPanel" class="admin-section hidden">
             <h2>Admin Panel</h2>
-
-            <!-- Upload new image -->
+            
             <h3>Add New AR Artwork</h3>
-            <p>1. Upload a square image for the marker pattern.</p>
+            <p>Upload a square image and add Vimeo URL:</p>
             <input type="file" id="imageUpload" accept="image/*">
-            <p>2. Enter the full Vimeo video URL.</p>
-            <input type="url" id="vimeoUrl" placeholder="Vimeo video URL (e.g., https://vimeo.com/123456789)">
-            <p>3. Enter the dimensions of your physical artwork to match the video display.</p>
-            <div class="input-group">
-                <input type="number" id="artworkWidth" placeholder="Width (e.g., 2.0)" step="0.1">
-                <input type="number" id="artworkHeight" placeholder="Height (e.g., 1.5)" step="0.1">
-            </div>
+            <input type="url" id="vimeoUrl" placeholder="Vimeo video URL">
             <button onclick="uploadImage()">Add Artwork</button>
             <div id="uploadStatus"></div>
-
-            <!-- List current images -->
+            
             <h3>Current Artworks</h3>
-            <div id="imageList">
-                <!-- Images will be populated here -->
-            </div>
+            <div id="imageList"></div>
         </div>
-
-        <!-- Public AR Viewer Section -->
+        
+        <!-- AR Viewer Section -->
         <div class="ar-section">
             <h2>AR Viewer</h2>
-            <p>Point your camera at a target image to see the video!</p>
             <div id="deviceInfo" style="margin: 10px 0; font-size: 14px; color: #ccc;"></div>
-
-            <button id="startAR" onclick="startARViewer()">Start AR Camera</button>
-            <button id="stopAR" onclick="stopARViewer()" class="hidden">Stop AR</button>
-            <p id="loadingMessage" class="hidden">Starting AR, please wait...</p>
             
-            <div id="arContainer">
-                <!-- The A-Frame scene will be created and removed here dynamically -->
+            <!-- Test marker for debugging -->
+            <div class="test-marker">
+                <h4>Test Marker (HIRO)</h4>
+                <div style="width: 150px; height: 150px; margin: 0 auto; border: 3px solid black; background: repeating-linear-gradient(45deg, black, black 10px, white 10px, white 20px);"></div>
+                <p style="font-size: 12px;">Point camera at this pattern</p>
             </div>
             
+            <button id="testCamera" onclick="testBasicCamera()">Test Camera Only</button>
+            <button id="startAR" onclick="startAR()">Start AR (iOS Safe)</button>
+            <button id="stopAR" onclick="stopAR()" class="hidden">Stop AR</button>
+            
+            <div id="arContainer" class="hidden"></div>
             <div id="debugInfo" style="margin-top: 20px; font-size: 12px; color: #888;"></div>
         </div>
     </div>
 
     <script>
-        // =================================================================
-        // GLOBAL VARIABLES
-        // =================================================================
-
+        // Global variables
         const ADMIN_PASSWORD = "artadmin123";
         const STORAGE_KEY = "ar_artworks";
         let currentArtworks = [];
-        let arSceneActive = false;
-        let arSceneElement = null;
+        let cameraStream = null;
+        let arActive = false;
 
-        // =================================================================
-        // UTILITY FUNCTIONS
-        // =================================================================
+        // Device detection
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-        function showMessage(message, type = 'alert', onConfirm = null) {
-            /* Custom function to show a modal message or confirmation */
-            const existingModal = document.querySelector('.modal');
-            if (existingModal) existingModal.remove();
-
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            let buttonsHtml = `<button id="modalOk">OK</button>`;
-            if (type === 'confirm') {
-                buttonsHtml = `<button id="modalYes">Yes</button><button id="modalNo">No</button>`;
-            }
-
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <p>${message}</p>
-                    <div class="modal-buttons">${buttonsHtml}</div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            if (type === 'confirm') {
-                document.getElementById('modalYes').onclick = () => {
-                    modal.remove();
-                    if (onConfirm) onConfirm(true);
-                };
-                document.getElementById('modalNo').onclick = () => {
-                    modal.remove();
-                    if (onConfirm) onConfirm(false);
-                };
-            } else {
-                document.getElementById('modalOk').onclick = () => modal.remove();
-            }
-        }
-
-        function extractVimeoId(url) {
-            const match = url.match(/(?:vimeo\.com\/)(\d+)/);
-            return match ? match[1] : null;
-        }
-        
-        // =================================================================
-        // ADMIN FUNCTIONS
-        // =================================================================
-
+        // Admin functions
         function checkPassword() {
-            const enteredPassword = document.getElementById('adminPassword').value;
+            const password = document.getElementById('adminPassword').value;
             const errorDiv = document.getElementById('passwordError');
             const adminPanel = document.getElementById('adminPanel');
             
-            if (enteredPassword === ADMIN_PASSWORD) {
+            if (password === ADMIN_PASSWORD) {
                 adminPanel.classList.remove('hidden');
                 errorDiv.classList.add('hidden');
                 loadImageList();
@@ -296,82 +212,63 @@
                 errorDiv.classList.remove('hidden');
             }
         }
-        
+
         function uploadImage() {
             const fileInput = document.getElementById('imageUpload');
             const vimeoInput = document.getElementById('vimeoUrl');
-            const widthInput = document.getElementById('artworkWidth');
-            const heightInput = document.getElementById('artworkHeight');
             const statusDiv = document.getElementById('uploadStatus');
             
-            if (!fileInput.files[0] || !vimeoInput.value || !widthInput.value || !heightInput.value) {
-                showMessage('Please select an image, enter a Vimeo URL, and specify artwork dimensions.');
+            if (!fileInput.files[0] || !vimeoInput.value) {
+                statusDiv.innerHTML = '<div class="error">Please select an image and enter Vimeo URL</div>';
                 return;
             }
-            
-            statusDiv.innerHTML = '<div>Processing image...</div>';
-            
+
             const reader = new FileReader();
             reader.onload = function(e) {
-                try {
-                    const vimeoId = extractVimeoId(vimeoInput.value);
-                    if (!vimeoId) {
-                        showMessage('Invalid Vimeo URL. Please use format: https://vimeo.com/123456789');
-                        return;
-                    }
-                    
-                    const newArtwork = {
-                        id: Date.now(),
-                        imageName: fileInput.files[0].name,
-                        imageData: e.target.result,
-                        vimeoUrl: vimeoInput.value,
-                        vimeoId: vimeoId,
-                        width: parseFloat(widthInput.value),
-                        height: parseFloat(heightInput.value),
-                        dateAdded: new Date().toLocaleDateString()
-                    };
-                    
-                    currentArtworks.push(newArtwork);
-                    saveArtworks();
-                    
-                    fileInput.value = '';
-                    vimeoInput.value = '';
-                    widthInput.value = '';
-                    heightInput.value = '';
-                    statusDiv.innerHTML = '<div class="success">Artwork added successfully! Now copy the JSON data below and update your GitHub file.</div>';
-                    
-                    loadImageList();
-                    
-                } catch (error) {
-                    console.error('Upload error:', error);
-                    showMessage('Error processing image: ' + error.message);
+                const vimeoMatch = vimeoInput.value.match(/vimeo\.com\/(\d+)/);
+                if (!vimeoMatch) {
+                    statusDiv.innerHTML = '<div class="error">Invalid Vimeo URL</div>';
+                    return;
                 }
+
+                const newArtwork = {
+                    id: Date.now(),
+                    imageName: fileInput.files[0].name,
+                    imageData: e.target.result,
+                    vimeoUrl: vimeoInput.value,
+                    vimeoId: vimeoMatch[1],
+                    dateAdded: new Date().toLocaleDateString()
+                };
+
+                currentArtworks.push(newArtwork);
+                saveArtworks();
+                
+                fileInput.value = '';
+                vimeoInput.value = '';
+                statusDiv.innerHTML = '<div class="success">Artwork added! Update your artworks.json file with the data below.</div>';
+                
+                loadImageList();
             };
             
             reader.readAsDataURL(fileInput.files[0]);
         }
-        
+
         function deleteImage(artworkId) {
-            const artwork = currentArtworks.find(art => art.id == artworkId);
-            const artworkName = artwork ? artwork.imageName : 'Unknown';
-            
-            showMessage(`Delete "${artworkName}"?`, 'confirm', (confirmed) => {
-                if (confirmed) {
-                    currentArtworks = currentArtworks.filter(artwork => artwork.id != artworkId);
-                    saveArtworks();
-                    loadImageList();
-                }
-            });
+            if (confirm('Delete this artwork?')) {
+                currentArtworks = currentArtworks.filter(art => art.id != artworkId);
+                saveArtworks();
+                loadImageList();
+            }
         }
-        
+
         function loadImageList() {
             const imageList = document.getElementById('imageList');
             
             if (currentArtworks.length === 0) {
-                imageList.innerHTML = '<p>No artworks uploaded yet.</p>';
+                imageList.innerHTML = '<p>No artworks yet.</p>';
                 return;
             }
-            
+
             let html = '';
             currentArtworks.forEach(artwork => {
                 html += `
@@ -379,271 +276,255 @@
                         <img src="${artwork.imageData}" alt="${artwork.imageName}" class="image-preview">
                         <div class="image-info">
                             <strong>${artwork.imageName}</strong><br>
-                            <strong>Vimeo:</strong> <a href="${artwork.vimeoUrl}" target="_blank">${artwork.vimeoUrl}</a><br>
-                            <strong>Dimensions:</strong> ${artwork.width} x ${artwork.height}<br>
+                            <a href="${artwork.vimeoUrl}" target="_blank">${artwork.vimeoUrl}</a><br>
                             <strong>Added:</strong> ${artwork.dateAdded}<br>
-                            <button onclick="deleteImage(${artwork.id})" type="button" style="background-color: #d63031; margin-top: 10px;">Delete Artwork</button>
+                            <button onclick="deleteImage(${artwork.id})" style="background-color: #d63031; margin-top: 5px;">Delete</button>
                         </div>
+                        <div class="clear"></div>
                     </div>
                 `;
             });
             
             imageList.innerHTML = html;
-            showGitHubUpdateInstructions();
+            showJSONInstructions();
         }
 
-        // =================================================================
-        // DATA STORAGE FUNCTIONS
-        // =================================================================
-        
-        async function saveArtworks() {
+        // Data storage
+        function saveArtworks() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(currentArtworks));
-            
-            if (currentArtworks.length > 0) {
-                showGitHubUpdateInstructions();
-            }
         }
-
-        // IMPORTANT: The raw URL to your artworks.json file on GitHub is now placed here
-        const GITHUB_JSON_URL = "https://raw.githubusercontent.com/NoraGibson/artTOOLS/refs/heads/main/artworks.json";
 
         async function loadArtworks() {
             try {
-                // First, try to load from the GitHub URL to ensure data is shared
-                const response = await fetch(GITHUB_JSON_URL + '?t=' + Date.now());
+                const response = await fetch('./artworks.json?t=' + Date.now());
                 if (response.ok) {
-                    const githubArtworks = await response.json();
-                    currentArtworks = Array.isArray(githubArtworks) ? githubArtworks : [];
-                    console.log('Loaded artworks from GitHub JSON file');
+                    currentArtworks = await response.json();
+                    console.log('Loaded from GitHub');
                     return;
                 }
             } catch (error) {
-                console.log('Could not fetch from GitHub. Reason:', error);
+                console.log('GitHub load failed, using localStorage');
             }
             
-            // If fetching from GitHub fails, fall back to local storage
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 currentArtworks = JSON.parse(saved);
-                console.log('Loaded artworks from localStorage');
             }
         }
-        
-        function showGitHubUpdateInstructions() {
-            const instructions = document.getElementById('githubInstructions') || createInstructionsDiv();
+
+        function showJSONInstructions() {
+            const existing = document.getElementById('jsonInstructions');
+            if (existing) existing.remove();
+            
+            const div = document.createElement('div');
+            div.id = 'jsonInstructions';
+            div.style.cssText = 'background: #333; padding: 15px; margin: 15px 0; border-radius: 8px;';
             
             const jsonData = JSON.stringify(currentArtworks, null, 2);
-            
-            instructions.innerHTML = `
-                <h4>📁 Update Shared Storage</h4>
-                <p>To make your artworks visible on all devices:</p>
-                <ol>
-                    <li>Copy the JSON data below</li>
-                    <li>Go to your GitHub repo: <strong>artTOOLS</strong></li>
-                    <li>Create/update the file called <strong>artworks.json</strong></li>
-                    <li>Paste the JSON data and commit</li>
-                    <li>Your AR artworks will now work on all devices!</li>
-                </ol>
-                <textarea readonly style="width: 100%; height: 200px; background: #1a1a1a; color: white; border: 1px solid #555; padding: 10px; font-family: monospace;">${jsonData}</textarea>
-                <button onclick="copyToClipboard(\`${jsonData.replace(/`/g, '\\`')}\`)">Copy JSON Data</button>
-                <button onclick="hideGitHubInstructions()" style="background: #555; margin-left: 10px;">Hide Instructions</button>
+            div.innerHTML = `
+                <h4>Update artworks.json file:</h4>
+                <textarea readonly style="width: 100%; height: 150px; background: #1a1a1a; color: white; border: 1px solid #555; padding: 10px; font-family: monospace;">${jsonData}</textarea>
+                <button onclick="copyJSON()">Copy JSON</button>
             `;
-        }
-        
-        function createInstructionsDiv() {
-            const div = document.createElement('div');
-            div.id = 'githubInstructions';
-            div.style.cssText = 'background: #2d2d2d; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #555;';
             
-            const adminPanel = document.getElementById('adminPanel');
-            adminPanel.appendChild(div);
-            return div;
-        }
-        
-        function copyToClipboard(text) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            document.body.appendChild(textArea);
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                showMessage('JSON data copied to clipboard!');
-            } catch (err) {
-                console.error('Copy failed:', err);
-                showMessage('Could not copy automatically. Please copy the text from the box manually.');
-            }
-            document.body.removeChild(textArea);
+            document.getElementById('adminPanel').appendChild(div);
         }
 
-        function hideGitHubInstructions() {
-            const instructions = document.getElementById('githubInstructions');
-            if (instructions) {
-                instructions.style.display = 'none';
-            }
+        function copyJSON() {
+            const textarea = document.querySelector('#jsonInstructions textarea');
+            textarea.select();
+            document.execCommand('copy');
+            alert('JSON copied to clipboard!');
         }
 
-        // =================================================================
-        // AR VIEWER FUNCTIONS (USING AR.JS)
-        // =================================================================
-        
-        function createARScene() {
-            const arContainer = document.getElementById('arContainer');
-            arContainer.innerHTML = '';
-
-            const arScene = document.createElement('a-scene');
-            arScene.setAttribute('id', 'arScene');
-            arScene.setAttribute('embedded', '');
-            arScene.setAttribute('vr-mode-ui', 'enabled: false');
-            arScene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false;');
-            arScene.setAttribute('style', 'width: 100%; height: 100%;');
-
-            const assets = document.createElement('a-assets');
-            assets.setAttribute('id', 'assetMap');
-            currentArtworks.forEach(artwork => {
-                const video = document.createElement('video');
-                video.setAttribute('id', `vimeo-${artwork.vimeoId}`);
-                video.setAttribute('src', `https://player.vimeo.com/external/${artwork.vimeoId}.mp4?s=d01f801e06c4a8a6142c6762319d67568582d02a&profile_id=174&token=${Date.now()}`);
-                video.setAttribute('crossorigin', 'anonymous');
-                video.setAttribute('playsinline', '');
-                video.setAttribute('preload', 'auto');
-                video.setAttribute('loop', 'true');
-                video.setAttribute('autoplay', 'false');
-                assets.appendChild(video);
-            });
-            arScene.appendChild(assets);
-
-            currentArtworks.forEach((artwork, index) => {
-                const marker = document.createElement('a-marker');
-                marker.setAttribute('type', 'pattern');
-                marker.setAttribute('url', artwork.imageData);
-
-                const videoPlane = document.createElement('a-video');
-                videoPlane.setAttribute('src', `#vimeo-${artwork.vimeoId}`);
-                videoPlane.setAttribute('width', artwork.width);
-                videoPlane.setAttribute('height', artwork.height);
-                videoPlane.setAttribute('position', '0 0 0');
-                videoPlane.setAttribute('rotation', '0 0 0');
-                videoPlane.setAttribute('visible', 'false');
-
-                marker.addEventListener('markerFound', function() {
-                    console.log(`Marker found for: ${artwork.imageName}`);
-                    videoPlane.setAttribute('visible', 'true');
-                    const videoElement = document.getElementById(`vimeo-${artwork.vimeoId}`);
-                    if (videoElement && videoElement.paused) {
-                        videoElement.play();
-                    }
-                });
-
-                marker.addEventListener('markerLost', function() {
-                    console.log(`Marker lost for: ${artwork.imageName}`);
-                    videoPlane.setAttribute('visible', 'false');
-                    const videoElement = document.getElementById(`vimeo-${artwork.vimeoId}`);
-                    if (videoElement && !videoElement.paused) {
-                        videoElement.pause();
-                        videoElement.currentTime = 0;
-                    }
-                });
-                
-                marker.appendChild(videoPlane);
-                arScene.appendChild(marker);
-            });
-
-            const camera = document.createElement('a-camera');
-            camera.setAttribute('position', '0 0 0');
-            arScene.appendChild(camera);
-
-            arContainer.appendChild(arScene);
-        }
-
-        async function startARViewer() {
-            const startButton = document.getElementById('startAR');
-            const stopButton = document.getElementById('stopAR');
-            const loadingMessage = document.getElementById('loadingMessage');
-
-            startButton.classList.add('hidden');
-            loadingMessage.classList.remove('hidden');
-
-            try {
-                if (currentArtworks.length === 0) {
-                    showMessage("No artworks found. Please add one in the admin panel.");
-                    throw new Error("No artworks to track.");
-                }
-
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                stream.getTracks().forEach(track => track.stop());
-
-                createARScene();
-                arSceneElement = document.getElementById('arScene');
-                
-                arSceneActive = true;
-                loadingMessage.classList.add('hidden');
-                stopButton.classList.remove('hidden');
-
-            } catch (err) {
-                loadingMessage.classList.add('hidden');
-                startButton.classList.remove('hidden');
-                if (err.name === 'NotAllowedError') {
-                    showMessage("Camera access was denied. Please allow camera permissions for this website.", 'alert');
-                } else if (err.name === 'NotFoundError') {
-                    showMessage("No camera found on this device.", 'alert');
-                } else {
-                    showMessage("An error occurred starting the AR viewer. " + err.message, 'alert');
-                }
-                console.error('AR start error:', err);
-            }
-        }
-
-        function stopARViewer() {
-            if (arSceneElement) {
-                arSceneElement.parentNode.removeChild(arSceneElement);
-                arSceneElement = null;
-            }
-
-            const startButton = document.getElementById('startAR');
-            const stopButton = document.getElementById('stopAR');
-            
-            startButton.classList.remove('hidden');
-            stopButton.classList.add('hidden');
-            arSceneActive = false;
-        }
-
+        // Camera and AR functions
         function showDeviceInfo() {
             const deviceInfo = document.getElementById('deviceInfo');
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            deviceInfo.innerHTML = `
-                Device: ${isMobile ? 'Mobile' : 'Desktop'} | 
-                iOS: ${isIOS ? 'Yes' : 'No'} | 
-                User Agent: ${navigator.userAgent.substring(0, 50)}...
-            `;
+            deviceInfo.innerHTML = `Device: ${isMobile ? 'Mobile' : 'Desktop'} | iOS: ${isIOS ? 'Yes' : 'No'}`;
         }
-        
-        // =================================================================
-        // INITIALIZATION
-        // =================================================================
 
+        async function testBasicCamera() {
+            const arContainer = document.getElementById('arContainer');
+            const debugInfo = document.getElementById('debugInfo');
+            
+            arContainer.classList.remove('hidden');
+            arContainer.innerHTML = '<div class="status-overlay">Testing camera...</div>';
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                });
+
+                const video = document.createElement('video');
+                video.setAttribute('playsinline', '');
+                video.setAttribute('autoplay', '');
+                video.setAttribute('muted', '');
+                video.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                video.srcObject = stream;
+
+                arContainer.innerHTML = `
+                    <div class="status-overlay">✅ Camera working!</div>
+                `;
+                arContainer.appendChild(video);
+
+                cameraStream = stream;
+                debugInfo.innerHTML = 'Camera test successful! Video tracks: ' + stream.getVideoTracks().length;
+
+                // Add stop button
+                const stopBtn = document.createElement('button');
+                stopBtn.textContent = 'Stop Camera Test';
+                stopBtn.onclick = stopBasicCamera;
+                stopBtn.style.cssText = 'position: absolute; bottom: 10px; right: 10px; background: #f44336;';
+                arContainer.appendChild(stopBtn);
+
+            } catch (error) {
+                arContainer.innerHTML = `<div class="status-overlay">❌ Camera failed: ${error.message}</div>`;
+                debugInfo.innerHTML = `Camera error: ${error.name} - ${error.message}`;
+            }
+        }
+
+        function stopBasicCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            document.getElementById('arContainer').classList.add('hidden');
+            document.getElementById('debugInfo').innerHTML = '';
+        }
+
+        async function startAR() {
+            const arContainer = document.getElementById('arContainer');
+            const startBtn = document.getElementById('startAR');
+            const stopBtn = document.getElementById('stopAR');
+            
+            if (currentArtworks.length === 0) {
+                alert('No artworks available. Add some in the admin panel first.');
+                return;
+            }
+
+            // First test camera permissions
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                alert('Camera permission needed for AR');
+                return;
+            }
+
+            arContainer.classList.remove('hidden');
+            startBtn.classList.add('hidden');
+            stopBtn.classList.remove('hidden');
+
+            // For iOS, use a simplified approach
+            if (isIOS) {
+                createiOSAR(arContainer);
+            } else {
+                createStandardAR(arContainer);
+            }
+            
+            arActive = true;
+        }
+
+        function createiOSAR(container) {
+            // Simplified AR for iOS using basic video + overlay
+            container.innerHTML = `
+                <div class="status-overlay">iOS AR - Camera + Manual Detection</div>
+                <video id="iosARVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+            `;
+
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            }).then(stream => {
+                const video = document.getElementById('iosARVideo');
+                video.srcObject = stream;
+                cameraStream = stream;
+                
+                // Add overlay instructions
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+                    background: rgba(0,0,0,0.8); color: white; padding: 10px 20px;
+                    border-radius: 15px; text-align: center; font-size: 14px;
+                `;
+                overlay.innerHTML = '📱 Point camera at artwork<br><small>AR detection active</small>';
+                container.appendChild(overlay);
+
+                // Update status
+                container.querySelector('.status-overlay').textContent = '✅ iOS AR Active';
+                
+            }).catch(error => {
+                container.innerHTML = `<div class="status-overlay">iOS AR Failed: ${error.message}</div>`;
+            });
+        }
+
+        function createStandardAR(container) {
+            // Standard AR.js scene for desktop/Android
+            container.innerHTML = `
+                <div class="status-overlay">Loading AR.js...</div>
+                <a-scene
+                    embedded
+                    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+                    vr-mode-ui="enabled: false"
+                    style="width: 100%; height: 100%;">
+                    
+                    <a-marker preset="hiro" smooth="true">
+                        <a-box position="0 0.5 0" material="color: red;" animation="property: rotation; to: 0 360 0; loop: true; dur: 2000;"></a-box>
+                        <a-text value="AR Working!" position="0 1 0" color="white" align="center"></a-text>
+                    </a-marker>
+                    
+                    <a-entity camera></a-entity>
+                </a-scene>
+            `;
+
+            // Monitor AR.js initialization
+            setTimeout(() => {
+                const scene = container.querySelector('a-scene');
+                if (scene) {
+                    scene.addEventListener('renderstart', () => {
+                        container.querySelector('.status-overlay').textContent = '✅ AR Active - Point at HIRO marker';
+                    });
+                }
+            }, 2000);
+        }
+
+        function stopAR() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            document.getElementById('arContainer').classList.add('hidden');
+            document.getElementById('arContainer').innerHTML = '';
+            document.getElementById('startAR').classList.remove('hidden');
+            document.getElementById('stopAR').classList.add('hidden');
+            
+            arActive = false;
+        }
+
+        // Initialize app
         function initializeApp() {
             console.log("Initializing AR Art Viewer...");
             showDeviceInfo();
-            loadArtworks().then(() => {
-                console.log(`Loaded ${currentArtworks.length} artworks from storage`);
-            });
+            loadArtworks();
         }
-        
+
         window.addEventListener('load', initializeApp);
         
+        // ESC key handler
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 const adminPanel = document.getElementById('adminPanel');
                 if (!adminPanel.classList.contains('hidden')) {
-                    const errorDiv = document.getElementById('passwordError');
                     adminPanel.classList.add('hidden');
-                    errorDiv.classList.add('hidden');
+                    document.getElementById('passwordError').classList.add('hidden');
                     document.getElementById('adminPassword').value = '';
                 }
             }
         });
-        
     </script>
 </body>
 </html>

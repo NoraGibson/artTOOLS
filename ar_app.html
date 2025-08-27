@@ -7,11 +7,10 @@
 
     <!--
     UPDATED: Using a stable, compatible version of AR.js that works with a-frame.
-    The previous version was causing a "TypeError: EventDispatcher" due to incompatibility.
-    This link points to a reliable build that fixes the issue.
+    This new link should resolve the black screen issue and properly load the camera stream.
     -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.0/aframe.min.js"></script>
-    <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.7.5/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe-ar/dist/aframe-ar.js"></script>
 
     <style>
         /* General styling for dark mode */
@@ -579,29 +578,24 @@
             startButton.classList.add('hidden');
             loadingMessage.classList.remove('hidden');
 
-            // Check for camera permissions before creating the scene
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    // We have permission, so create the AR scene
-                    stream.getTracks().forEach(track => track.stop()); // Stop the test stream
-                    createARScene();
-                    arSceneElement = document.getElementById('arScene');
-                    
-                    // Listen for the 'loaded' event to hide loading message
-                    arSceneElement.addEventListener('loaded', () => {
-                        console.log('AR Scene has loaded');
-                        loadingMessage.classList.add('hidden');
-                        stopButton.classList.remove('hidden');
-                        arSceneActive = true;
-                    });
-                })
-                .catch(err => {
-                    // Permission was denied or an error occurred
-                    loadingMessage.classList.add('hidden');
-                    startButton.classList.remove('hidden');
-                    showMessage("Error: Camera access was denied. Please check your browser's permissions for this website and try again.", 'alert');
-                    console.error('Camera access error:', err);
-                });
+            // Create the AR scene directly. AR.js handles camera permissions internally.
+            createARScene();
+            arSceneElement = document.getElementById('arScene');
+            
+            // Listen for the 'loaded' event to hide loading message
+            arSceneElement.addEventListener('loaded', () => {
+                console.log('AR Scene has loaded');
+                loadingMessage.classList.add('hidden');
+                stopButton.classList.remove('hidden');
+                arSceneActive = true;
+            });
+
+            arSceneElement.addEventListener('ar-error', (e) => {
+                console.error('AR.js initialization error:', e.detail.error);
+                loadingMessage.classList.add('hidden');
+                startButton.classList.remove('hidden');
+                showMessage('AR.js failed to initialize. Please try refreshing the page or check your browser console for details.', 'alert');
+            });
         }
 
         function stopARViewer() {
@@ -661,3 +655,4 @@
     </script>
 </body>
 </html>
+

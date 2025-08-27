@@ -535,6 +535,64 @@
             /* Create the AR.js scene with all uploaded artwork markers */
             const arContainer = document.getElementById('arContainer');
             
+            // Detect if we're on iOS
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            console.log('Device detected - iOS:', isIOS);
+            
+            // For iOS, use simpler AR scene configuration
+            if (isIOS) {
+                arContainer.innerHTML = `
+                    <a-scene
+                        embedded
+                        arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; sourceWidth: 640; sourceHeight: 480; displayWidth: 640; displayHeight: 480;"
+                        vr-mode-ui="enabled: false;"
+                        style="width: 100%; height: 400px;">
+                        
+                        <!-- Simple test marker first -->
+                        <a-marker preset="hiro">
+                            <a-text 
+                                value="AR Working!"
+                                position="0 0.5 0"
+                                color="red"
+                                align="center">
+                            </a-text>
+                            <a-box position="0 0 0" material="color: red;"></a-box>
+                        </a-marker>
+                        
+                        <!-- Camera -->
+                        <a-camera gps-camera rotation-reader look-controls-enabled="false"></a-camera>
+                        
+                        <!-- Status text -->
+                        <a-text 
+                            value="Point camera at QR-like marker. If you see this text, AR is working!"
+                            position="0 -2 -3"
+                            color="white"
+                            align="center"
+                            scale="0.8 0.8 0.8">
+                        </a-text>
+                    </a-scene>
+                `;
+            } else {
+                // Original scene for non-iOS devices
+                createFullARScene();
+            }
+            
+            // Set up error handling for A-Frame
+            setTimeout(() => {
+                const scene = document.querySelector('a-scene');
+                if (scene) {
+                    scene.addEventListener('camera-error', function(event) {
+                        console.error('Camera error:', event);
+                        arContainer.innerHTML = '<p style="color: red; text-align: center; padding: 20px;">Camera failed to initialize. Try refreshing the page.</p>';
+                    });
+                }
+            }, 1000);
+        }
+        
+        function createFullARScene() {
+            /* Create the full AR scene with custom markers */
+            const arContainer = document.getElementById('arContainer');
+            
             let sceneHTML = `
                 <a-scene
                     embedded
@@ -742,3 +800,4 @@
     </script>
 </body>
 </html>
+

@@ -1,16 +1,16 @@
 [
   {
     "index": 0,
-    "thumb": "thumbnails/art1.jpg",
+    "thumb": "thumbnails/I2.jpg",
     "vimeoUrl": "https://vimeo.com/1040987263?fl=pl&fe=sh",
     "aspectRatio": "16:9",
     "title": "IntrinsicAR"
   },
   {
     "index": 1,
-    "thumb": "thumbnails/art2.jpg",
-    "vimeoUrl": "https://vimeo.com/937906523?fl=pl&fe=sh",
-    "aspectRatio": "16:9",
+    "thumb": "thumbnails/A1.jpg",
+    "vimeoUrl": "https://vimeo.com/1119652702?fl=pl&fe=sh",
+    "aspectRatio": "1:1",
     "title": "AuroraAR"
   }
 ]

@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Grading System</title>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- 1. SETUP & POLYFILLS ---
+
+        const { useState, useEffect } = React;
+
+        // Polyfill for window.storage to use browser LocalStorage
+        if (!window.storage) {
+            window.storage = {
+                get: async (key) => {
+                    const value = localStorage.getItem(key);
+                    return { value: value }; // Matches structure expected by your app
+                },
+                set: async (key, value) => {
+                    localStorage.setItem(key, value);
+                    return { value };
+                }
+            };
+        }
+
+        // --- 2. ICON DEFINITIONS (Replaces lucide-react imports) ---
+        // These are standard SVG replacements for the icons used in your code
+        
+        const IconBase = ({ size = 24, children }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+            >
+                {children}
+            </svg>
+        );
+
+        const Eye = (props) => (
+            <IconBase {...props}>
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+            </IconBase>
+        );
+
+        const EyeOff = (props) => (
+            <IconBase {...props}>
+                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7c2.36 0 4.48-.435 6.26-1.17" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+            </IconBase>
+        );
+
+        const Plus = (props) => (
+            <IconBase {...props}>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+            </IconBase>
+        );
+
+        const Save = (props) => (
+            <IconBase {...props}>
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+            </IconBase>
+        );
+
+        const Trash2 = (props) => (
+            <IconBase {...props}>
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <line x1="10" y1="11" x2="10" y2="17" />
+                <line x1="14" y1="11" x2="14" y2="17" />
+            </IconBase>
+        );
+
+        const Calendar = (props) => (
+            <IconBase {...props}>
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+            </IconBase>
+        );
+
+        const Edit2 = (props) => (
+            <IconBase {...props}>
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+            </IconBase>
+        );
+
+        const Check = (props) => (
+            <IconBase {...props}>
+                <polyline points="20 6 9 17 4 12" />
+            </IconBase>
+        );
+
+        const X = (props) => (
+            <IconBase {...props}>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </IconBase>
+        );
+
+
+        // --- 3. MAIN APPLICATION CODE ---
+        // (This is your exact logic, with imports removed)
+
+        const MASTER_PASSWORD = 'instructor2026';
+
+        function GradingApp() {
+            const [view, setView] = useState('login');
+            const [password, setPassword] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
+            const [currentUser, setCurrentUser] = useState(null);
+            const [error, setError] = useState('');
+            const [classes, setClasses] = useState({ 'Class I': [], 'Class II': [], 'Class III': [] });
+            const [sessions, setSessions] = useState([]);
+            const [selectedClass, setSelectedClass] = useState('Class I');
+            const [selectedDate, setSelectedDate] = useState('');
+            const [currentSession, setCurrentSession] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            // New student form
+            const [newStudentName, setNewStudentName] = useState('');
+            const [newStudentPassword, setNewStudentPassword] = useState('');
+            const [addingToClass, setAddingToClass] = useState('');
+
+            // Edit student
+            const [editingStudent, setEditingStudent] = useState(null);
+            const [editName, setEditName] = useState('');
+            const [editPassword, setEditPassword] = useState('');
+
+            useEffect(() => {
+                loadData();
+            }, []);
+
+            const loadData = async () => {
+                try {
+                const [classesResult, sessionsResult] = await Promise.all([
+                    window.storage.get('classes', true).catch(() => null),
+                    window.storage.get('sessions', true).catch(() => null)
+                ]);
+                if (classesResult?.value) {
+                    setClasses(JSON.parse(classesResult.value));
+                }
+                if (sessionsResult?.value) {
+                    setSessions(JSON.parse(sessionsResult.value));
+                }
+                } catch (err) {
+                console.error('Load error:', err);
+                } finally {
+                setLoading(false);
+                }
+            };
+
+            const saveData = async () => {
+                try {
+                await Promise.all([
+                    window.storage.set('classes', JSON.stringify(classes), true),
+                    window.storage.set('sessions', JSON.stringify(sessions), true)
+                ]);
+                } catch (err) {
+                console.error('Save error:', err);
+                alert('Error saving data. Please try again.');
+                }
+            };
+
+            const handleLogin = () => {
+                if (password === MASTER_PASSWORD) {
+                setCurrentUser({ type: 'instructor' });
+                setView('instructor');
+                setError('');
+                } else {
+                let found = false;
+                for (const className in classes) {
+                    const student = classes[className].find(s => s.password === password);
+                    if (student) {
+                    setCurrentUser({ type: 'student', name: student.name, class: className });
+                    setView('student');
+                    setError('');
+                    found = true;
+                    break;
+                    }
+                }
+                if (!found) {
+                    setError('Invalid password');
+                }
+                }
+            };
+
+            const handleLogout = () => {
+                setPassword('');
+                setCurrentUser(null);
+                setView('login');
+                setError('');
+            };
+
+            const addStudent = async (className) => {
+                if (!newStudentName.trim() || !newStudentPassword.trim()) {
+                alert('Please enter both name and password');
+                return;
+                }
+
+                // Check if password already exists
+                for (const cls in classes) {
+                if (classes[cls].some(s => s.password === newStudentPassword)) {
+                    alert('This password is already in use. Please choose a different one.');
+                    return;
+                }
+                }
+
+                const newStudent = { 
+                name: newStudentName.trim(), 
+                password: newStudentPassword.trim() 
+                };
+                const updatedClasses = {
+                ...classes,
+                [className]: [...classes[className], newStudent]
+                };
+                setClasses(updatedClasses);
+                setNewStudentName('');
+                setNewStudentPassword('');
+                setAddingToClass('');
+
+                await window.storage.set('classes', JSON.stringify(updatedClasses), true);
+            };
+
+            const removeStudent = async (className, index) => {
+                if (!confirm('Are you sure you want to remove this student?')) return;
+                const updatedClasses = {
+                ...classes,
+                [className]: classes[className].filter((_, i) => i !== index)
+                };
+                setClasses(updatedClasses);
+                await window.storage.set('classes', JSON.stringify(updatedClasses), true);
+            };
+
+            const startEditStudent = (className, index) => {
+                const student = classes[className][index];
+                setEditingStudent({ className, index });
+                setEditName(student.name);
+                setEditPassword(student.password);
+            };
+
+            const saveEditStudent = async () => {
+                if (!editName.trim() || !editPassword.trim()) {
+                alert('Please enter both name and password');
+                return;
+                }
+
+                // Check if password already exists (excluding current student)
+                for (const cls in classes) {
+                const existingStudent = classes[cls].find((s, idx) => 
+                    s.password === editPassword && 
+                    !(cls === editingStudent.className && idx === editingStudent.index)
+                );
+                if (existingStudent) {
+                    alert('This password is already in use. Please choose a different one.');
+                    return;
+                }
+                }
+
+                const updatedClasses = { ...classes };
+                updatedClasses[editingStudent.className][editingStudent.index] = {
+                name: editName.trim(),
+                password: editPassword.trim()
+                };
+                setClasses(updatedClasses);
+                setEditingStudent(null);
+                setEditName('');
+                setEditPassword('');
+
+                await window.storage.set('classes', JSON.stringify(updatedClasses), true);
+            };
+
+            const cancelEditStudent = () => {
+                setEditingStudent(null);
+                setEditName('');
+                setEditPassword('');
+            };
+
+            const startSession = () => {
+                if (!selectedDate) {
+                alert('Please select a date');
+                return;
+                }
+
+                if (classes[selectedClass].length === 0) {
+                alert('Please add students to this class first');
+                return;
+                }
+
+                const newSession = {
+                id: Date.now(),
+                class: selectedClass,
+                date: selectedDate,
+                grades: classes[selectedClass].map(student => ({
+                    studentName: student.name,
+                    attendance: 0,
+                    participation: 0,
+                    performance: 0,
+                    comment: ''
+                }))
+                };
+                setCurrentSession(newSession);
+            };
+
+            const updateGrade = (studentIndex, field, value) => {
+                if (field === 'comment') {
+                setCurrentSession(prev => ({
+                    ...prev,
+                    grades: prev.grades.map((g, i) => 
+                    i === studentIndex ? { ...g, [field]: value } : g
+                    )
+                }));
+                } else {
+                const numValue = Math.min(5, Math.max(0, parseInt(value) || 0));
+                setCurrentSession(prev => ({
+                    ...prev,
+                    grades: prev.grades.map((g, i) => 
+                    i === studentIndex ? { ...g, [field]: numValue } : g
+                    )
+                }));
+                }
+            };
+
+            const saveSession = async () => {
+                const updatedSessions = [...sessions, currentSession];
+                setSessions(updatedSessions);
+                setCurrentSession(null);
+                setSelectedDate('');
+                
+                await window.storage.set('sessions', JSON.stringify(updatedSessions), true);
+                alert('Session saved successfully!');
+            };
+
+            const deleteSession = async (sessionId) => {
+                if (!confirm('Delete this session? This cannot be undone.')) return;
+                const updatedSessions = sessions.filter(s => s.id !== sessionId);
+                setSessions(updatedSessions);
+                await window.storage.set('sessions', JSON.stringify(updatedSessions), true);
+                alert('Session deleted successfully');
+            };
+            
+            // Edit session
+            const [editingSession, setEditingSession] = useState(null);
+
+            const startEditSession = (session) => {
+                setEditingSession(JSON.parse(JSON.stringify(session)));
+                // Deep copy
+            };
+
+            const updateEditingGrade = (studentIndex, field, value) => {
+                if (field === 'comment') {
+                setEditingSession(prev => ({
+                    ...prev,
+                    grades: prev.grades.map((g, i) => 
+                    i === studentIndex ? { ...g, [field]: value } : g
+                    )
+                }));
+                } else {
+                const numValue = Math.min(5, Math.max(0, parseInt(value) || 0));
+                setEditingSession(prev => ({
+                    ...prev,
+                    grades: prev.grades.map((g, i) => 
+                    i === studentIndex ? { ...g, [field]: numValue } : g
+                    )
+                }));
+                }
+            };
+
+            const saveEditedSession = async () => {
+                const updatedSessions = sessions.map(s => 
+                s.id === editingSession.id ? editingSession : s
+                );
+                setSessions(updatedSessions);
+                setEditingSession(null);
+                await window.storage.set('sessions', JSON.stringify(updatedSessions), true);
+                alert('Session updated successfully!');
+            };
+
+            const cancelEditSession = () => {
+                setEditingSession(null);
+            };
+
+            const calculateTotals = (studentName, className) => {
+                const studentSessions = sessions.filter(s => 
+                s.class === className && 
+                s.grades.some(g => g.studentName === studentName)
+                );
+                return studentSessions.reduce((acc, session) => {
+                const grade = session.grades.find(g => g.studentName === studentName);
+                if (grade) {
+                    acc.attendance += grade.attendance;
+                    acc.participation += grade.participation;
+                    acc.performance += grade.performance;
+                }
+                return acc;
+                }, { attendance: 0, participation: 0, performance: 0 });
+            };
+
+            if (loading) {
+                return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-xl">Loading...</div>
+                </div>;
+            }
+
+            if (view === 'login') {
+                return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+                    <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Student Grading System</h1>
+                    <div className="space-y-4">
+                        <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            
+                        <div className="relative">
+                            <input
+                            type={showPassword ? 'text' : 'password'}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                    
+                            onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Enter your password"
+                            />
+                            <button
+                    
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                            >
+                            {showPassword ?
+                            <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
+                        </div>
+                        {error && <p className="text-red-500 text-sm">{error}</p>}
+                        <button
+                        onClick={handleLogin}
+                    
+                        className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition font-medium"
+                        >
+                        Login
+                        </button>
+                        <p className="text-xs text-gray-500 text-center mt-4">
+                        Instructors use master password.
+                        Students use their unique password.
+                        </p>
+                    </div>
+                    </div>
+                </div>
+                );
+            }
+
+            if (view === 'student') {
+                const studentSessions = sessions.filter(s => 
+                s.class === currentUser.class && 
+                s.grades.some(g => g.studentName === currentUser.name)
+                ).sort((a, b) => new Date(b.date) - new Date(a.date));
+                const totals = calculateTotals(currentUser.name, currentUser.class);
+
+                return (
+                <div className="min-h-screen bg-gray-50 p-4">
+                    <div className="max-w-4xl mx-auto">
+                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">{currentUser.name}</h1>
+                        
+                            <p className="text-gray-600">{currentUser.class}</p>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                        >
+                        
+                            Logout
+                        </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">Total Points</h2>
+                        <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-4 bg-blue-50 rounded-lg">
+                            <div className="text-2xl font-bold text-blue-600">{totals.attendance}</div>
+                            <div className="text-sm text-gray-600">Attendance</div>
+                        </div>
+                        <div className="text-center p-4 bg-green-50 rounded-lg">
+                            <div className="text-2xl font-bold text-green-600">{totals.participation}</div>
+                    
+                            <div className="text-sm text-gray-600">Participation</div>
+                        </div>
+                        <div className="text-center p-4 bg-purple-50 rounded-lg">
+                            <div className="text-2xl font-bold text-purple-600">{totals.performance}</div>
+                            <div className="text-sm text-gray-600">Performance</div>
+                        </div>
+                    
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold text-gray-800">Grade History</h2>
+                        {studentSessions.length === 0 ?
+                        (
+                        <p className="text-gray-500">No grades yet</p>
+                        ) : (
+                        studentSessions.map(session => {
+                            const grade = session.grades.find(g => g.studentName === currentUser.name);
+                            return (
+                        
+                                <div key={session.id} className="bg-white rounded-lg shadow-md p-6">
+                                <div className="flex justify-between items-start mb-4">
+                                <h3 className="font-semibold text-gray-800">{session.date}</h3>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4 mb-4">
+                                <div>
+                                    <span className="text-sm text-gray-600">Attendance:</span>
+                                    <span className="ml-2 font-semibold">{grade.attendance}/5</span>
+                                </div>
+            
+                                <div>
+                                    <span className="text-sm text-gray-600">Participation:</span>
+                                    <span className="ml-2 font-semibold">{grade.participation}/5</span>
+                                </div>
+                
+                            <div>
+                                    <span className="text-sm text-gray-600">Performance:</span>
+                                    <span className="ml-2 font-semibold">{grade.performance}/5</span>
+                                </div>
+                    
+                            </div>
+                                {grade.comment && (
+                                <div className="mt-4 p-3 bg-gray-50 rounded">
+                                    <p className="text-sm text-gray-700">{grade.comment}</p>
+                            
+                                </div>
+                                )}
+                            </div>
+                            );
+                        })
+                        )}
+                    </div>
+                    </div>
+                </div>
+                );
+            }
+
+            if (view === 'instructor') {
+                return (
+                <div className="min-h-screen bg-gray-50 p-4">
+                    <div className="max-w-6xl mx-auto">
+                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <div className="flex justify-between items-center">
+                        <h1 className="text-2xl font-bold text-gray-800">Instructor Dashboard</h1>
+                        <button
+                    
+                            onClick={handleLogout}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                        >
+                            Logout
+                        </button>
+                        </div>
+                    </div>
+
+                
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        {['Class I', 'Class II', 'Class III'].map(className => (
+                        <div key={className} className="bg-white rounded-lg shadow-md p-6">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">{className}</h2>
+                            <div className="space-y-2 mb-4">
+                        
+                            {classes[className].map((student, index) => (
+                                <div key={student.password} className="p-2 bg-gray-50 rounded">
+                                {editingStudent?.className === className && editingStudent?.index === index ?
+                                (
+                                    <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                
+                                        value={editName}
+                                        onChange={(e) => setEditName(e.target.value)}
+                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                        placeholder="Student name"
+                                    />
+                                    <input
+                                        type="text"
+                                
+                                        value={editPassword}
+                                        onChange={(e) => setEditPassword(e.target.value)}
+                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                        
+                                        placeholder="Password"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button
+                            
+                                        onClick={saveEditStudent}
+                                        className="flex-1 px-2 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center justify-center gap-1"
+                                        >
+                            
+                                        <Check size={14} /> Save
+                                        </button>
+                                        <button
+                                        
+                                        onClick={cancelEditStudent}
+                                        className="flex-1 px-2 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 flex items-center justify-center gap-1"
+                                        >
+                                        <X size={14} /> Cancel
+                                        </button>
+                                    </div>
+                                    </div>
+                                
+                                ) : (
+                                    <div className="flex justify-between items-center">
+                                    <div className="flex-1">
+                                        <div className="font-medium">{student.name}</div>
+                        
+                                        <div className="text-xs text-gray-500">Password: {student.password}</div>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        
+                                        <button
+                                        onClick={() => startEditStudent(className, index)}
+                                        className="text-blue-500 hover:text-blue-700 p-1"
+                                        >
+                
+                                        <Edit2 size={16} />
+                                        </button>
+                                        <button
+                            
+                                        onClick={() => removeStudent(className, index)}
+                                        className="text-red-500 hover:text-red-700 p-1"
+                                        >
+                                    
+                                        <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                    </div>
+                            
+                                )}
+                                </div>
+                            ))}
+                            </div>
+                            
+                            {addingToClass === className ?
+                            (
+                            <div className="space-y-2 p-3 bg-blue-50 rounded">
+                                <input
+                                type="text"
+                                value={newStudentName}
+                        
+                                onChange={(e) => setNewStudentName(e.target.value)}
+                                placeholder="Student name"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                />
+                            
+                                <input
+                                type="text"
+                                value={newStudentPassword}
+                                onChange={(e) => setNewStudentPassword(e.target.value)}
+                                placeholder="Password"
+                
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                />
+                                <div className="flex gap-2">
+                                <button
+                    
+                                    onClick={() => addStudent(className)}
+                                    className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
+                                >
+                                    Add Student
+                
+                                    </button>
+                                <button
+                                    onClick={() => {
+                                    setAddingToClass('');
+                                    setNewStudentName('');
+                                    setNewStudentPassword('');
+                                    }}
+                                    className="flex-1 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm"
+                                >
+                                    Cancel
+                                
+                                </button>
+                                </div>
+                            </div>
+                            ) : (
+                            <button
+                                onClick={() => setAddingToClass(className)}
+            
+                                className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                            >
+                                <Plus size={16} /> Add Student
+                            </button>
+                    
+                            )}
+                        </div>
+                        ))}
+                    </div>
+
+                    {!currentSession ?
+                    (
+                        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">Start New Grading Session</h2>
+                        <div className="flex gap-4 items-end">
+                            <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                
+                            <select
+                                value={selectedClass}
+                                onChange={(e) => setSelectedClass(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            
+                            >
+                                <option>Class I</option>
+                                <option>Class II</option>
+                                <option>Class III</option>
+                            </select>
+                            </div>
+            
+                            <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                            <input
+                                type="date"
+                                value={selectedDate}
+            
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            </div>
+                            <button
+            
+                            onClick={startSession}
+                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+                            >
+                            Start Session
+                            </button>
+                    
+                        </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                            <h2 className="text-xl font-bold text-gray-800">{currentSession.class} - {currentSession.date}</h2>
+                            </div>
+                            <div className="flex gap-2">
+                            <button
+                                onClick={() => setCurrentSession(null)}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={saveSession}
+            
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                            >
+                                <Save size={16} /> Save Session
+                            </button>
+                        
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-6">
+                            {currentSession.grades.map((grade, index) => (
+                            <div key={index} className="border border-gray-200 rounded-lg p-4">
+                        
+                                <h3 className="font-semibold text-gray-800 mb-3">{grade.studentName}</h3>
+                                <div className="grid grid-cols-3 gap-4 mb-3">
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-1">Attendance (0-5)</label>
+                        
+                                    <input
+                                    type="number"
+                                    min="0"
+                                    max="5"
+                        
+                                        value={grade.attendance}
+                                    onChange={(e) => updateGrade(index, 'attendance', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-1">Participation (0-5)</label>
+                                    <input
+            
+                                    type="number"
+                                    min="0"
+                                    max="5"
+                                    
+                                    value={grade.participation}
+                                    onChange={(e) => updateGrade(index, 'participation', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    />
+                        
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-1">Performance (0-5)</label>
+                                    <input
+                        
+                                    type="number"
+                                    min="0"
+                                    max="5"
+                                    value={grade.performance}
+                    
+                                        onChange={(e) => updateGrade(index, 'performance', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+            
+                                </div>
+                                <div>
+                                <label className="block text-sm text-gray-600 mb-1">Comments</label>
+                                <textarea
+                        
+                                    value={grade.comment}
+                                    onChange={(e) => updateGrade(index, 'comment', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    rows="2"
+                
+                                    placeholder="Add comments about this student's performance..."
+                                />
+                                </div>
+                            </div>
+                            ))}
+            
+                        </div>
+                        </div>
+                    )}
+
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">All Sessions</h2>
+                        {sessions.length === 0 ?
+                        (
+                        <p className="text-gray-500">No sessions recorded yet</p>
+                        ) : (
+                        <div className="space-y-4">
+                            {sessions.sort((a, b) => new Date(b.date) - new Date(a.date)).map(session => (
+                            <div key={session.id} className="border border-gray-200 rounded-lg p-4">
+                
+                                {editingSession?.id === session.id ? (
+                                <div>
+                                    <div className="flex justify-between items-center mb-4">
+                                    <div>
+                
+                                        <h3 className="font-semibold text-gray-800">{editingSession.class} - {editingSession.date}</h3>
+                                        <p className="text-sm text-gray-500">Editing session</p>
+                                    </div>
+                            
+                                    <div className="flex gap-2">
+                                        <button
+                                        onClick={cancelEditSession}
+                                        className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition text-sm"
+                                        >
+                                        Cancel
+                                        </button>
+                
+                                        <button
+                                        onClick={saveEditedSession}
+                                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm flex items-center gap-1"
+                    
+                                        >
+                                        <Save size={14} /> Save Changes
+                                        </button>
+                            
+                                    </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                    {editingSession.grades.map((grade, index) => (
+                        
+                                        <div key={index} className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                                        <h4 className="font-semibold text-gray-800 mb-3">{grade.studentName}</h4>
+                                        <div className="grid grid-cols-3 gap-3 mb-3">
+                        
+                                            <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Attendance (0-5)</label>
+                                            <input
+                    
+                                                type="number"
+                                                min="0"
+                                                max="5"
+            
+                                                value={grade.attendance}
+                                                onChange={(e) => updateEditingGrade(index, 'attendance', e.target.value)}
+                                    
+                                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            </div>
+                        
+                                            <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Participation (0-5)</label>
+                                            <input
+                    
+                                                type="number"
+                                                min="0"
+                                                max="5"
+            
+                                                value={grade.participation}
+                                                onChange={(e) => updateEditingGrade(index, 'participation', e.target.value)}
+                                        
+                                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            </div>
+                            
+                                            <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Performance (0-5)</label>
+                                            <input
+                    
+                                                type="number"
+                                                min="0"
+                                                max="5"
+        
+                                                value={grade.performance}
+                                                onChange={(e) => updateEditingGrade(index, 'performance', e.target.value)}
+                                        
+                                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            </div>
+                            
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Comments</label>
+                                
+                                            <textarea
+                                            value={grade.comment}
+                                            onChange={(e) => updateEditingGrade(index, 'comment', e.target.value)}
+                            
+                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                            rows="2"
+                                            />
+                    
+                                        </div>
+                                        </div>
+                                    ))}
+                                    </div>
+            
+                                </div>
+                                ) : (
+                                <div>
+                                    <div className="flex justify-between items-center mb-4">
+                
+                                    <div>
+                                        <h3 className="font-semibold text-gray-800">{session.class} - {session.date}</h3>
+                                        <p className="text-sm text-gray-500">{session.grades.length} students</p>
+                            
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                        onClick={() => startEditSession(session)}
+                
+                                        className="text-blue-500 hover:text-blue-700 p-1"
+                                        title="Edit session"
+                                        >
+                        
+                                            <Edit2 size={18} />
+                                        </button>
+                                        <button
+                                    
+                                        onClick={() => deleteSession(session.id)}
+                                        className="text-red-500 hover:text-red-700 p-1"
+                                        title="Delete session"
+                                        >
+            
+                                        <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                            
+                                    </div>
+                                    <div className="space-y-2">
+                                    {session.grades.map((grade, index) => (
+                                        <div key={index} className="bg-gray-50 p-3 rounded">
+                
+                                            <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                            <div className="font-medium mb-1">{grade.studentName}</div>
+                
+                                            <div className="text-sm text-gray-600">
+                                                A: {grade.attendance} |
+                                                P: {grade.participation} | Pf: {grade.performance}
+                                            </div>
+                                            {grade.comment && (
+                                    
+                                                <div className="text-sm text-gray-700 mt-2 italic">{grade.comment}</div>
+                                            )}
+                                            </div>
+                                
+                                        </div>
+                                        </div>
+                                    ))}
+                                    </div>
+                        
+                                </div>
+                                )}
+                            </div>
+                            ))}
+                        </div>
+                        )}
+                    
+                    </div>
+                    </div>
+                </div>
+                );
+            }
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<GradingApp />);
+    </script>
+</body>
+</html>

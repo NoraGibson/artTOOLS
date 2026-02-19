@@ -6,6 +6,11 @@ artTOOLS is a collection of tools to inspire creativity.
 
 ## ✨ Current Tools
 
+**Ballet Flashcards**
+This tool is meant to help beginner ballet students learn their facings and arabesque arms. These flashcards offer an ultra easy interface, with basic descriptions and sketches for each of the facings as well as the arm positions for arabesque. Knowing these fundamentals really makes learning combinations easier! 
+
+TRY ME!: https://arttools-balletfacings.streamlit.app
+
  **IMPROVED! Contemporary Ballet Choreography Tool**
  This tool improves upon the "Ballet Modifier" in a few ways: refined modifiers, additional ballet terms, and added ballet facings. Made in Python using Streamlit, this app, with its improved UI, allows users to create a list of ballet steps with contemporary modifications and traditional facings. Sequences may be saved and downloaded as a .txt file for sharing with other dancers for endless individual creative interpretation. Enjoy! Accessible via mobile or desktop.
 
